@@ -1,0 +1,143 @@
+$vars: (
+    
+    primary: #bc2a2b,
+    primary-hover: #d73b3b,
+    secondary: #af48c2,
+    radius: 50px,    
+    radius-md: 90px,    
+    text-size: 16px,
+    app-item-radius: calc(var(--radius) * 2),
+    password-toggle-radius: var(--radius),
+    input-radius-sm: var(--radius),
+    select-radius: var(--radius),
+    input-radius-md: var(--radius),
+    search-radius-md: var(--radius),
+    button-radius-md: var(--radius),
+    button-radius-sm: var(--radius),
+    pin-radius: var(--radius),
+
+    search-color: var(--dim),
+
+    color-scheme-border: 1px var(--border) solid,
+    color-scheme: var(--border),
+    color-scheme-active: var(--dim),
+
+    skeleton-radius: 75px,
+    crumb-padding: 2px,
+    table-row-gap: 0px,
+
+    drawer-radius-h: 30px,
+
+    input-color: var(--text),
+    select-search-color: var(--color),
+
+    page-padding: 25px,
+
+);
+
+$light: (
+    body: #e6eaf2,
+    text: #111,
+    btn-text: #fff,
+    input: #fff,
+    cover-bg: rgba(230,234,242,0.8),
+    
+    dim: #fff,
+    dim-light: #fff,
+    dim-hover: var(--border),
+
+    border: #dfe5f0,
+
+    button-link: #fff,
+    button-link-border: #fff,
+
+    table-row-odd: var(--dim),
+    table-row-even: var(--border),
+    table-row-hover: var(--dim-hover),
+
+    switch-unchecked: #c3ccda,
+
+    btn: var(--primary),
+    btn-hover: var(--primary-hover),
+    
+
+);
+
+$dark: (
+    body: #182123,
+    cover-bg: rgba(24, 33, 35, 0.814),
+    dim: #29373a,
+    dim-light: #1d282b,
+    dim-hover: #2f4347,
+    border: #344548,
+    text: #e6eaf2,
+    button-link: var(--dim),
+    button-link-border: var(--border),
+    skeleton: var(--border),
+    input: var(--dim),
+    
+    select: var(--dim),
+
+    table-row-odd: var(--dim),
+    table-row-even: var(--border),
+    table-row-hover: var(--dim-hover),
+
+    btn: rgba(0,0,0,0.3),
+    btn-hover: rgba(0,0,0,0.5),
+
+    btn-tab: #1e1e1e,
+    btn-tab-hover: #292929,
+    btn-tab-off-hover: #171717,
+    btn-tab-off: var(--btn-tab-hover),
+
+    tooltip: var(--dim),
+
+    crumb-item-color: var(--text),
+    drawer-color: var(--dim),
+    drawer-shadow: 0px 0px 0px transparent,
+    select-shadow: var(--drawer-shadow),
+    select-border: 0px,
+    select-search-border: 0px,
+    select-option-color: var(--text),
+    select-arrow-color: var(--text),
+    select-options: var(--dim),
+    select-search: var(--dim-light),
+    
+    select-selected: var(--dim-hover),
+    select-option-hover: var(--dim-hover),
+    select-hover: var(--dim-hover),
+
+);
+
+body {
+
+    color-scheme: light dark;
+
+    @each $name, $value in $vars{
+        --#{$name}: #{$value};
+    }
+
+    
+    @each $name, $value in $light {
+        --#{$name}: #{$value};
+    }   
+    
+}
+
+[color-scheme="dark"] {
+    body{
+        @each $name, $value in $dark {
+            --#{$name}: #{$value};
+        }
+        .--with-tooltip{
+            --tooltip: var(--dim);
+        }
+    }
+}
+
+html, body {
+  background: var(--body);
+  color: var(--text);
+}
+
+a{ color: var(--text); user-select: none; }

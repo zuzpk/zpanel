@@ -1,0 +1,2 @@
+echo "✅ Pre-commit hook is running!"
+node husky-pre.js || exit 1

@@ -1,0 +1,205 @@
+#!/bin/bash
+
+# ===============================================
+# ZuzPanel Dependency Installer
+# Installs: expect and redis (if not already present)
+# OS: CentOS / RHEL / Rocky Linux / AlmaLinux
+# Run as root
+# ===============================================
+
+set -euo pipefail
+
+echo "=== ZuzPanel Dependency Installer ==="
+echo "Checking for required packages..."
+
+# Helper function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Helper function to check if a service is enabled and running
+service_running() {
+    systemctl is-active --quiet "$1" 2>/dev/null
+}
+
+# Helper function to install packages by name and check commands
+install_package() {
+    local pkg="$1"
+    shift
+    local checks=("$@")
+
+    # If no check commands provided, use package name as the check command
+    if [ ${#checks[@]} -eq 0 ]; then
+        checks=("$pkg")
+    fi
+
+    for cmd in "${checks[@]}"; do
+        if command_exists "$cmd"; then
+            echo "✓ $pkg is already installed"
+            return 0
+        fi
+    done
+
+    echo "→ Installing $pkg..."
+    if command_exists dnf; then
+        sudo dnf install -y "$pkg"
+    elif command_exists yum; then
+        sudo yum install -y "$pkg"
+    else
+        echo "Error: Neither dnf nor yum found. Unsupported package manager." >&2
+        exit 1
+    fi
+
+    echo "✓ $pkg installed successfully"
+}
+
+# Download Services
+# 1. Define the list of services
+SERVICES=("zpanel-app-notify@.service" "zpanel-app-watcher.service" "zpanel-rest.service" "zpanel-ui.service")
+SERVICES_TO_ENABLE=("zpanel-app-watcher.service" "zpanel-rest.service" "zpanel-ui.service")
+
+# 2. Define the Base URL (using the RAW content URL from GitHub)
+BASE_URL="https://raw.githubusercontent.com/zuzpk/zuz-panel/refs/heads/main/services"
+
+RELOAD_NEEDED=false
+
+for SERVICE in "${SERVICES[@]}"; do
+    FILE_PATH="/etc/systemd/system/$SERVICE"
+
+    if [ ! -f "$FILE_PATH" ]; then
+        echo "→ Downloading $SERVICE..."
+        
+        # We use -fsSL: 
+        # -f (fail silently on server errors)
+        # -sS (show errors if it fails, otherwise stay silent)
+        # -L (follow redirects)
+        sudo curl -fsSL -o "$FILE_PATH" "$BASE_URL/$SERVICE"
+
+        if [ $? -eq 0 ]; then
+            echo "✓ $SERVICE downloaded successfully"
+            RELOAD_NEEDED=true
+        else
+            echo "✗ Failed to download $SERVICE"
+        fi
+    else
+        echo "✓ $SERVICE already exists"
+    fi
+done
+
+
+
+# Create /etc/systemd/system/service.d/zpanel-notify.conf if not present
+if [ ! -f /etc/systemd/system/service.d/zpanel-notify.conf ]; then
+    echo "→ Creating service.d/zpanel-notify.conf for zapp-notify service..."
+    sudo mkdir -p /etc/systemd/system/service.d
+    sudo curl -o /etc/systemd/system/service.d/zpanel-notify.conf https://raw.githubusercontent.com/zuzpk/zuz-panel/refs/heads/main/services/zpanel-notify.conf
+    RELOAD_NEEDED=true
+    echo "✓ service.d/zpanel-notify.conf created successfully"
+else
+    echo "✓ service.d/zpanel-notify.conf already exists"
+fi
+
+# Reload systemd only once if any new files were added
+if [ "$RELOAD_NEEDED" = true ]; then
+    echo "→ Reloading systemd daemon..."
+    sudo systemctl daemon-reload
+
+    for SERVICE in "${SERVICES_TO_ENABLE[@]}"; do
+        echo "→ Enabling and starting $SERVICE..."
+        sudo systemctl enable --now "$SERVICE"
+    done
+fi
+
+REST_DIR="/zpanel/rest"
+UI_DIR="/zpanel/ui"
+
+if [ -d "$REST_DIR" ]; then
+    echo "→ Found REST directory at $REST_DIR. Preparing build..."
+    
+    # Use parentheses ( ) to run in a subshell so your main script 
+    # doesn't stay stuck in the UI directory if it fails.
+    (
+        cd "$REST_DIR" || exit
+        
+        echo "→ Running pnpm install..."
+        pnpm install --silent
+        
+        echo "→ Running pnpm build..."
+        if pnpm build; then
+            echo "✓ REST built successfully."
+        else
+            echo "✗ REST build failed."
+            exit 1
+        fi
+    )
+else
+    echo "⚠ REST directory $REST_DIR not found. Skipping build."
+fi
+
+if [ -d "$UI_DIR" ]; then
+    echo "→ Found UI directory at $UI_DIR. Preparing build..."
+    
+    # Use parentheses ( ) to run in a subshell so your main script 
+    # doesn't stay stuck in the UI directory if it fails.
+    (
+        cd "$UI_DIR" || exit
+        
+        echo "→ Running pnpm install..."
+        pnpm install --silent
+        
+        echo "→ Running pnpm build..."
+        if pnpm build; then
+            echo "✓ UI built successfully."
+        else
+            echo "✗ UI build failed."
+            exit 1
+        fi
+    )
+else
+    echo "⚠ UI directory $UI_DIR not found. Skipping build."
+fi
+
+sudo semanage fcontext -a -t bin_t "/zpanel/bin(/.*)?"
+sudo restorecon -R -v /zpanel/bin
+sudo setenforce 1 || true
+
+# Install EPEL repository
+install_package epel-release
+
+# Install inotifywait
+install_package inotify-tools
+
+# Install expect (used for secure password testing in auth script)
+install_package expect expect
+
+# Install Redis
+install_package redis redis-server redis-cli
+
+# Install jq
+install_package jq
+
+# Enable and start Redis service
+if systemctl list-unit-files redis.service >/dev/null 2>&1; then
+    echo "→ Configuring Redis service..."
+    sudo systemctl enable redis.service
+
+    if service_running redis; then
+        echo "✓ Redis service is already running"
+    else
+        echo "→ Starting Redis service..."
+        sudo systemctl start redis.service
+        echo "✓ Redis started and enabled on boot"
+    fi
+else
+    echo "Warning: Redis service unit not found after install. Please check manually."
+fi
+
+# Final status check
+echo ""
+echo "=== Installation Complete ==="
+echo "expect: $(command_exists expect && echo "OK" || echo "MISSING")"
+echo "redis:  $(service_running redis && echo "Running" || echo "Not running")"
+echo ""
+echo "Installation complete."
+
+exit 0

@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+USERNAME="$1"
+PASSWORD="$2"
+
+if [[ -z "$USERNAME" || -z "$PASSWORD" ]]; then
+    exit 1
+fi
+
+# Use expect to automate the login check
+# We use 'stty -echo' to hide the password from logs if needed
+export PASSWORD
+expect <<'EOF'
+  # Set a short timeout
+  set timeout 5
+  
+  # Access the env variable securely
+  set password $env(PASSWORD)
+  
+  spawn su - [lindex $argv 0] -c "exit 0"
+  
+  expect {
+    "Password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Authentication failure" { exit 1 }
+    "incorrect password" { exit 1 }
+    eof { exit 0 }
+    timeout { exit 1 }
+  }
+EOF
+
+exit $?

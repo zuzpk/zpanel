@@ -1,0 +1,21 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UsersSess = exports.Users = exports.Settings = exports.PushTokens = void 0;
+const push_tokens_1 = require("./push_tokens");
+Object.defineProperty(exports, "PushTokens", { enumerable: true, get: function () { return push_tokens_1.PushTokens; } });
+const settings_1 = require("./settings");
+Object.defineProperty(exports, "Settings", { enumerable: true, get: function () { return settings_1.Settings; } });
+const users_1 = require("./users");
+Object.defineProperty(exports, "Users", { enumerable: true, get: function () { return users_1.Users; } });
+const users_sess_1 = require("./users_sess");
+Object.defineProperty(exports, "UsersSess", { enumerable: true, get: function () { return users_sess_1.UsersSess; } });
+const orm_1 = __importDefault(require("@zuzjs/orm"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const zormEntities = [push_tokens_1.PushTokens, settings_1.Settings, users_1.Users, users_sess_1.UsersSess];
+const zorm = orm_1.default.get(process.env.DATABASE_URL, zormEntities);
+zorm.connect(zormEntities);
+exports.default = zorm;

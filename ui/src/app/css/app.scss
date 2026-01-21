@@ -1,0 +1,72 @@
+@use "./props.scss";
+@use "./fonts.scss";
+@use "./theme.scss";
+@use "./zuz.scss";
+
+*, body{
+  font-family: "Roboto", sans-serif !important;
+  corner-shape: squircle !important;
+}
+html,
+body {
+  max-width: 100vw;
+  overflow: hidden;  
+}
+
+nextjs-portal {
+  display: none;
+}
+
+.--monaco-editor-container [aria-hidden="true"],
+.--monaco-editor-container [aria-hidden="true"] * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  pointer-events: auto !important;
+  cursor: text !important;
+}
+
+/* Also reset on the editor itself and its children */
+.monaco-editor,
+.monaco-editor * {
+  user-select: text !important;
+  pointer-events: auto !important;
+}
+
+.--gfont{font-family: "Google Sans Flex", "Roboto", sans-serif !important;}
+
+.--btn{
+  background: var(--btn) !important;
+  &:hover{
+    background: var(--btn-hover) !important;
+  }
+}
+.--cf-tab{
+  &.--cf-off{
+    background: var(--btn-tab-off) !important;
+    &:hover{
+      background: var(--btn-tab-off-hover) !important;
+    }
+  }
+  &.--cf-on{
+    background: var(--btn-tab) !important;
+    &:hover{
+      background: var(--btn-tab-hover) !important;
+    }
+  }
+}
+
+.--crumb-chevron{
+  svg{
+    fill: var(--text);
+  }
+}
+
+.--select .--options-list{
+  border-radius: 10px !important;
+}
+
+.--app-item{
+  .--cover{
+    border-radius: var(--app-item-radius),
+  }
+}

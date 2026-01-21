@@ -1,0 +1,13 @@
+[Unit]
+Description=ZPanel systemd watcher for zapp_* services
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/zpanel/bin/zapp-watcher.sh
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

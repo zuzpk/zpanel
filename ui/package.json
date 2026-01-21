@@ -1,0 +1,36 @@
+{
+  "name": "zpanel",
+  "version": "0.1.1",
+  "private": true,
+  "scripts": {
+    "css-fix": "sudo npm i -g style-loader css-loader sass-loader",
+    "dev": "concurrently \"zuzjs\" \"node zuz.js mode=dev dir=.next.dev\" \"next dev -p 2083 --webpack\"",
+    "build": "node zuz.js mode=prod dir=.next.build && next build --webpack",
+    "start": "next start -p 2083",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@types/js-cookie": "3.0.6",
+    "@zuzjs/core": "^0.2.9",
+    "@zuzjs/store": "^0.1.6",
+    "@zuzjs/ui": "^0.10.3",
+    "js-cookie": "^3.0.5",
+    "next": "16.1.4",
+    "react": "^19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@types/node": "25.0.9",
+    "@types/react": "19.2.9",
+    "@types/react-dom": "19.2.3",
+    "concurrently": "^9.1.2",
+    "css-loader": "^7.1.2",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.1.4",
+    "sass": "^1.97.2",
+    "style-loader": "^4.0.0",
+    "typescript": "5.9.3"
+  }
+}

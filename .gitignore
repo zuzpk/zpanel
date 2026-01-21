@@ -1,0 +1,5 @@
+.pnpm-store
+/rest/dist
+/rest/logs/*.log
+/rest/.env
+/rest/zpanel.pid
