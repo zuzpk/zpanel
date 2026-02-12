@@ -1,0 +1,17 @@
+[Unit]
+Description=ZPanel_UI
+After=network.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/bin/pnpm start
+User=root
+Group=root
+WorkingDirectory=/zpanel/ui
+Restart=always
+Environment=PORT=2083
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

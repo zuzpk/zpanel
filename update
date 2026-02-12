@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# ===============================================
+# ZuzPanel Auto-Updater
+# Checks GitHub for updates and rebuilds apps
+# Run as root or user with sudo privileges
+# ===============================================
+
+set -euo pipefail
+
+# Configuration
+REPO_URL="https://github.com/zuzpk/zpanel.git"
+ZPANEL_ROOT="/zpanel"
+REST_DIR="$ZPANEL_ROOT/rest"
+UI_DIR="$ZPANEL_ROOT/ui"
+
+echo "=== ZuzPanel Update Check ==="
+
+cd "$ZPANEL_ROOT"
+
+# 1. Fetch the latest state from GitHub
+git fetch origin main
+
+# 2. Check if local is behind remote
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse @{u})
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "✓ ZuzPanel is already up to date."
+    exit 0
+fi
+
+echo "→ Update found! Synchronizing code..."
+
+# 3. Force Reset (Required because we squash/rewrite history on GitHub)
+# This wipes any local untracked changes to tracked files.
+git reset --hard origin/main
+
+# 4. Update Systemd Services if changed
+# Note: You can now pull these directly from the git repo instead of RAW URLs
+if [ -d "$ZPANEL_ROOT/services" ]; then
+    echo "→ Updating systemd services..."
+    sudo cp "$ZPANEL_ROOT/services/"*.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+fi
+
+# 5. Build REST
+if [ -d "$REST_DIR" ]; then
+    echo "→ Rebuilding REST..."
+    (
+        cd "$REST_DIR"
+        pnpm install --silent
+        if pnpm build; then
+            echo "✓ REST built successfully."
+            # Restart service to apply changes
+            sudo systemctl restart zpanel-rest || true
+        else
+            echo "✗ REST build failed."
+            exit 1
+        fi
+    )
+fi
+
+# 6. Build UI
+if [ -d "$UI_DIR" ]; then
+    echo "→ Rebuilding UI..."
+    (
+        cd "$UI_DIR"
+        pnpm install --silent
+        if pnpm build; then
+            echo "✓ UI built successfully."
+            sudo systemctl restart zpanel-ui || true
+        else
+            echo "✗ UI build failed."
+            exit 1
+        fi
+    )
+fi
+
+echo "=== Update Successful ==="

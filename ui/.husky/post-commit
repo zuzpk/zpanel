@@ -1,0 +1,2 @@
+echo "✅ Post-commiting..."
+node husky-post.js

@@ -1,0 +1,17 @@
+[Unit]
+Description=ZPanel_REST
+After=network.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/bin/pnpm start
+User=root
+Group=root
+WorkingDirectory=/zpanel/rest
+Restart=always
+Environment=PORT=2082
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
