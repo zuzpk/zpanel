@@ -6,3 +6,4 @@
 _rest_src_app_app_index.ts
 /usr/apps/*
 /usr/vhosts/*
+/usr/keys/*
