@@ -56,7 +56,7 @@ class GitHubService {
         githubAppId: string,
         githubInstallationId: string,
         privateKey: string
-    ) => {
+    ) : Promise<string | null> => {
 
         const now = Math.floor(Date.now() / 1000);
         const payload = {

@@ -151,7 +151,7 @@ export const ListGitBranches = async (req: Request, resp: Response) => {
     try{
 
 
-      let accessToken : string | undefined = undefined;
+      let accessToken : string | null = null;
 
       if ( app.git?.isPrivate && pem ){
         accessToken = await github.getAccessToken(
@@ -163,7 +163,7 @@ export const ListGitBranches = async (req: Request, resp: Response) => {
 
       const branches = await github.getBranches(
         app.git?.url!,
-        accessToken
+        accessToken || undefined
       )
 
       

@@ -8,6 +8,7 @@ import { uuid } from '@zuzjs/core';
 import { createSystemUser } from '../user';
 import { execSync } from 'child_process';
 import pc from "picocolors"
+import github from "./github-manager"
 
 class AppManager {
 
@@ -37,6 +38,10 @@ class AppManager {
     private gitCmd(cmd: string, appDir: string) { 
         this.validatePath(appDir);
         return `sudo git -C "${appDir}" ${cmd}`; 
+    }
+
+    private gitBuildPrivateUrl(accessToken: string | null, url: string): string {
+        return `https://x-access-token:${accessToken}@${url.replace(/^https?:\/\//, '')}`;
     }
 
 
@@ -327,18 +332,41 @@ class AppManager {
      */
     public async deployBranch(config: ZuzApp, branch: string, onData: (chunk: string) => void) {
 
-        await this.createSafetySnapshot(config.id, path.join(config.path, config.user, this.appName(config.name)), onData);
-
-        log.info(config.id, `Initializing Deployment`, pc.green(branch));
-
         const serviceName = config.service;
         const serviceFilePath = `/etc/systemd/system/${serviceName}`;
         const appName = serviceName.replace(`.service`, ``);
-        // const baseDir = config.path.trim().endsWith(`/${config.user}`) 
-        //     ? config.path 
-        //     : path.join(config.path, config.user);
         const baseDir = path.join(`/home`, config.user)
         const appDir = path.join(baseDir, appName);
+
+        if ( sudoDirExists(appDir) ){
+            await this.createSafetySnapshot(config.id, appDir, onData);
+        }
+
+        log.info(config.id, `Initializing Deployment`, pc.green(branch));
+
+
+        const pem = await this.getPemKey(config.id)
+        let accessToken : string | null = null;
+
+        if ( config.git?.isPrivate ){
+            if ( !pem ){
+                return this.broadcast(config.id, `❌ Deployment failed: PEM key required for private repo.`, onData, "error");
+            }
+            accessToken = await github.getAccessToken(
+                config.git.appId!, 
+                config.git.installationId!, 
+                pem
+            )
+
+            if ( !accessToken ){
+                return this.broadcast(config.id, `❌ Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
+            }
+
+        }
+
+        const gitUrl = config.git?.isPrivate ? 
+            this.gitBuildPrivateUrl(accessToken, config.git!.url)
+            : config.git?.url;
 
         try {
             // 1. Setup Environment
@@ -357,7 +385,7 @@ class AppManager {
                 this.broadcast(config.id, `#2 Initial clone of ${branch}...`, onData);
                 await runStreamedCommand(
                     config.id,
-                    `sudo git clone -b ${branch} --single-branch ${config.git?.url} "${appDir}"`,
+                    `sudo git clone -b ${branch} --single-branch ${gitUrl} "${appDir}"`,
                     onData
                 );
             } else {
@@ -365,8 +393,9 @@ class AppManager {
                 await runStreamedCommand(
                     config.id,
                     [
+                        this.gitCmd(`remote set-url origin "${gitUrl}"`, appDir),
                         this.gitCmd(`fetch origin`, appDir),
-                        this.gitCmd(`checkout ${branch}`, appDir),
+                        this.gitCmd(`checkout -B ${branch}`, appDir),
                         this.gitCmd(`reset --hard origin/${branch}`, appDir),
                     ].join(' && '),
                     onData
