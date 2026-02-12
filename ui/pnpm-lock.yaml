@@ -24,8 +24,8 @@ importers:
         specifier: ^0.1.6
         version: 0.1.6
       '@zuzjs/ui':
-        specifier: ^1.0.11
-        version: 1.0.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.12
+        version: 1.0.12(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -800,8 +800,24 @@ packages:
     resolution: {integrity: sha512-iPH0TctgpwNFUvSuJ8FFwsV5r6RI1ZGADIykXulHmaRZaoKKgnDCSzTYY6IeyHFeSBirGpFn1Xk2FHxPnSzIVw==}
     engines: {node: '>=18.17.0'}
 
+  '@zuzjs/core@0.3.4':
+    resolution: {integrity: sha512-PJVnpfG5VVs2RKr7vJ+GZC6yystLQ8AiZT+slzHSUTth0g4jl0qm+4yHN80eZmOYSKl2zC2DiJF/wa6Rlj7A3A==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      react: ^19.2.3
+    peerDependenciesMeta:
+      react:
+        optional: true
+
   '@zuzjs/hooks@0.1.3':
     resolution: {integrity: sha512-AXVOYhGYcpKivdmALB10V7o9Xl3VHSwTDPW0d9jAZifCJOkYGTmJn+GFkTuu63MR+tW+dBIzrDT8YF43OtApiA==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      react: ^19.2.3
+      react-dom: ^19.2.3
+
+  '@zuzjs/hooks@0.1.4':
+    resolution: {integrity: sha512-S/y+xJejCl9aTa7QBdGstLh6Xe7AXj8ezsk+bJ/0majvb9OB679W7JeEsCSkC56eUKkpSkK5CFV+njR+4og69Q==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.2.3
@@ -811,8 +827,8 @@ packages:
     resolution: {integrity: sha512-57QqCVFZwV7FtbzOlIAuedUcz0FHqucTWeoV9lw8ViG+fxRqKsl4e9KXl8eIGcLWyAirUE2vsX1ipubM/c0C5g==}
     engines: {node: '>=18.17.0'}
 
-  '@zuzjs/ui@1.0.11':
-    resolution: {integrity: sha512-lfFizmgsJkjZri0Wqlji1oM4dVVGPJMed3og+BnlWk8Ydfd8op51Nu6txplplPQ9fk4yfyEr1O4p8YBHkfyvzw==}
+  '@zuzjs/ui@1.0.12':
+    resolution: {integrity: sha512-3zWnSa7aYW4m7iNFRtNdZ4/+Wzj4rFB08inO/hkAXFrvajhqYN+Z/C7W0A6pvF0f2cUqcfxzaul5qhpvBPTekQ==}
     hasBin: true
     peerDependencies:
       react: ^19.2.3
@@ -3108,6 +3124,23 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  '@zuzjs/core@0.3.4(react@19.2.3)':
+    dependencies:
+      '@types/hashids': 2.0.1
+      '@types/md5': 2.3.6
+      axios: 1.13.5
+      date-fns: 4.1.0
+      hashids: 2.3.0
+      ip-regex: 5.0.0
+      js-cookie: 3.0.5
+      md5: 2.3.0
+      moment: 2.30.1
+      nanoid: 5.1.6
+    optionalDependencies:
+      react: 19.2.3
+    transitivePeerDependencies:
+      - debug
+
   '@zuzjs/hooks@0.1.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@types/md5': 2.3.6
@@ -3128,14 +3161,34 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  '@zuzjs/hooks@0.1.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@types/md5': 2.3.6
+      '@types/react': 19.2.13
+      '@types/react-dom': 19.2.3(@types/react@19.2.13)
+      '@zuzjs/core': 0.3.4(react@19.2.3)
+      chokidar: 5.0.0
+      commander: 14.0.3
+      date-fns: 4.1.0
+      hashids: 2.3.0
+      js-cookie: 3.0.5
+      md5: 2.3.0
+      moment: 2.30.1
+      nanoid: 5.1.6
+      picocolors: 1.1.1
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+    transitivePeerDependencies:
+      - debug
+
   '@zuzjs/store@0.1.6':
     dependencies:
       react: 19.0.0-beta-26f2496093-20240514
 
-  '@zuzjs/ui@1.0.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@zuzjs/ui@1.0.12(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@zuzjs/core': 0.3.2
-      '@zuzjs/hooks': 0.1.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@zuzjs/core': 0.3.4(react@19.2.3)
+      '@zuzjs/hooks': 0.1.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       chokidar: 5.0.0
       commander: 14.0.3
       date-fns: 4.1.0

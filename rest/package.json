@@ -14,7 +14,7 @@
     "db": "npx zorm pull"
   },
   "dependencies": {
-    "@zuzjs/core": "^0.3.1",
+    "@zuzjs/core": "^0.3.4",
     "@zuzjs/orm": "^0.3.7",
     "body-parser": "^2.2.1",
     "connect-redis": "^9.0.0",
