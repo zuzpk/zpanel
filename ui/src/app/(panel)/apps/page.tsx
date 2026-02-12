@@ -125,7 +125,7 @@ const Page : React.FC = (_props) => {
         
             {loading || ID == -1 ? null 
             : list.length > 0 ? 
-                <Box as={[ `grid grid-cols:repeat[5,1fr] gap:20` ]}>
+                <Box as={[ `grid grid-cols:repeat[5,300] gap:20` ]}>
                     {list.map((app: ZuzApp, index: number) => <AppItem 
                         meta={app} 
                         index={index} 

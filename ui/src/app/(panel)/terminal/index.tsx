@@ -12,7 +12,7 @@ const ZuzTerminal: React.FC<{
     appId,
 }) => {
     const terminalRef = useRef<TerminalHandler>(null);
-    const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [isConnected, setIsConnected] = useState<boolean>(true);
 
     useEffect(() => {
         // 1. Link this specific mount's ref to the Singleton

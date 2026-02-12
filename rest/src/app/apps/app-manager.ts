@@ -35,6 +35,46 @@ class AppManager {
         }
     }
 
+    private async guessAppPort(appId: string, appDir: string): Promise<number> {
+
+        const envPath = path.join(appDir, '.env');
+        if ( await this.exists(envPath) ){
+            try{
+                const envContent = await fs.readFile(envPath, 'utf-8');
+                const portMatch = envContent.match(/PORT=(\d+)/);
+                if ( portMatch && portMatch[1] ){
+                    return +portMatch[1];
+                }
+            }
+            catch(err){
+                log.warn(appId, "Failed to parse .env for port detection:", err);
+            }
+        }
+
+        const pkgJsonPath = path.join(appDir, 'package.json');
+        if ( await this.exists(pkgJsonPath) ){
+            try{
+                const pkgContent = await fs.readFile(pkgJsonPath, 'utf-8');
+                const pkg = JSON.parse(pkgContent);
+                if ( pkg && pkg.scripts && pkg.scripts.start ){
+                    const startScript = pkg.scripts.start as string;
+                    const portMatch = startScript.match(/--port\s+(\d+)/) 
+                        || startScript.match(/-p\s+(\d+)/)
+                        || startScript.match(/PORT=(\d+)/);
+                    if ( portMatch && portMatch[1] ){
+                        return +portMatch[1];                        
+                    }
+                }
+            }
+            catch(err){
+                log.warn(appId, "Failed to parse package.json for port detection:", err);
+            }
+        }
+
+        return 0
+
+    }
+
     private gitCmd(cmd: string, appDir: string) { 
         this.validatePath(appDir);
         return `sudo git -C "${appDir}" ${cmd}`; 
@@ -335,8 +375,10 @@ class AppManager {
         const serviceName = config.service;
         const serviceFilePath = `/etc/systemd/system/${serviceName}`;
         const appName = serviceName.replace(`.service`, ``);
-        const baseDir = path.join(`/home`, config.user)
-        const appDir = path.join(baseDir, appName);
+        const baseDir = config.path == `/home` ? 
+            path.join(`/home`, config.user) : path.dirname(config.path);
+        const appDir = config.path == `/home` ? 
+            path.join(baseDir, appName) : config.path;
 
         if ( sudoDirExists(appDir) ){
             await this.createSafetySnapshot(config.id, appDir, onData);
@@ -405,11 +447,16 @@ class AppManager {
             // Fix permissions immediately after git operations so pnpm can work
             execSyncSudo(`chown -R ${config.user}:${config.user} "${appDir}"`);
 
+            // Try guessing port from package.json (if exists)
+            const appPort = await this.guessAppPort(config.id!, appDir)
+            this.broadcast(config.id, `⚡ Detected port ${pc.cyan(appPort)}`, onData);
+
             // Update local config state
             const latestSha = execSync(this.gitCmd(`rev-parse HEAD`, appDir)).toString().trim();
             config.git!.branch = branch;
             config.git!.commit = latestSha;
             config.path = appDir;
+            config.port = appPort;
             await this.saveConfig(config);
 
             // 3. Dependencies & Build
@@ -440,10 +487,10 @@ class AppManager {
             execSyncSudo(`systemctl enable ${serviceName}`);
             execSyncSudo(`systemctl restart ${serviceName}`);
 
-            this.broadcast(config.id, `✅ Deployment successful! Live on ${branch} (${latestSha.substring(0, 7)})`, onData);
+            this.broadcast(config.id, `:: Deployment successful! Live on ${branch} (${latestSha.substring(0, 7)})`, onData);
 
         } catch (err: any) {
-            this.broadcast(config.id, `❌ Deployment failed: ${err.message}`, onData, "error");
+            this.broadcast(config.id, `:: Deployment failed: ${err.message}`, onData, "error");
         }
     }
 

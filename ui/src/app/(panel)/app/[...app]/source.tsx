@@ -1,22 +1,25 @@
 "use client"
-import { Box, Button, Table, Text, useToast, useDrawer, useDialog } from '@zuzjs/ui';
+import { Box, Button, Table, Text, useToast, useDrawer, useDialog, css } from '@zuzjs/ui';
 import { AppStore, Store } from "@/store";
 import createStore, { useStore } from "@zuzjs/store";
 import React, { useEffect } from 'react'
 import PageTitle from '../../page-title';
 import { useParams } from 'next/navigation';
-import { time, withPost } from '@zuzjs/core';
+import { _, time, withPost } from '@zuzjs/core';
 import { GitHubBranch } from '@/types';
 import DeployBranch from './deploy-branch';
+import Link from 'next/link';
 
 const SourceCode : React.FC = (_props) => {
 
     const { app } = useParams()
+    const { loading: appLoading, error, users, list  } = useStore<typeof AppStore.Apps>(Store.Apps)
     const [ appId, section ] = app as Array<string>
     const { loading, deploying, branches, dispatch }  = useStore<typeof AppStore.Git>(Store.Git)
     const toast = useToast()
     const drawer = useDrawer()
     const dialog = useDialog()
+    const currentApp = list.find(l => l.id == appId)
 
     const loadData = () => {
         dispatch({ loading: true, deploying: false })
@@ -51,8 +54,10 @@ const SourceCode : React.FC = (_props) => {
     }
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if ( currentApp){
+            loadData()
+        }
+    }, [currentApp])
 
     return <Box as={`flex cols h:100vh w:calc[100vw - 330px] p:$page-padding overflow-y`}>
         <PageTitle
@@ -60,8 +65,16 @@ const SourceCode : React.FC = (_props) => {
                 { label: `Source Code`, link: `/app/${appId}/source`, icon: `hashtag` }
             ]}
             />
-        <Box as={`flex flex:1 rel`}>
+        <Box as={`flex flex:1 rel cols`}>
+            <Text as={`s:lg bold`}>Git repo url</Text>
+            {_(currentApp?.git?.url ?? ``).isEmpty() ? 
+                <Link href={`/app/${appId}/settings`} className={css(`s:md c:$primary tdn &hover(tdu)`)}>Add GitHub repository URL</Link>
+            :   <Box as={`flex aic gap:10`}>
+                    <Text as={`s:md`}>{currentApp?.git?.url}</Text>
+                    <Link href={`/app/${appId}/settings`} className={css(`s:md c:$primary tdn &hover(tdu)`)}>Change</Link>
+                </Box>}
             <Table
+                as={`mt:20`}
                 loading={loading}
                 loadingRowCount={5}
                 animateRows={true}

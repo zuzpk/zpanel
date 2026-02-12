@@ -14,34 +14,62 @@ ZPANEL_ROOT="/zpanel"
 REST_DIR="$ZPANEL_ROOT/rest"
 UI_DIR="$ZPANEL_ROOT/ui"
 
-echo "=== ZuzPanel Update Check ==="
-
+echo "=== ZuzPanel Auto-Updater ==="
 cd "$ZPANEL_ROOT"
 
-# 1. Fetch the latest state from GitHub
+# 1. Fetch latest state
 git fetch origin main
 
-# 2. Check if local is behind remote
+# 2. Check for changes
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse @{u})
+REMOTE=$(git rev-parse origin/main)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
     echo "✓ ZuzPanel is already up to date."
     exit 0
 fi
 
-echo "→ Update found! Synchronizing code..."
+echo "→ Update found! Saving local changes..."
 
-# 3. Force Reset (Required because we squash/rewrite history on GitHub)
-# This wipes any local untracked changes to tracked files.
+# 3. SAFE SYNC: Stash -> Reset -> Pop
+echo "→ Resetting CSS maps to match remote..."
+git checkout HEAD -- ui/src/app/css/zuz.scss
+git checkout HEAD -- ui/src/app/css/zuzmap.ts
+
+# Check if there are local changes to stash
+if ! git diff-index --quiet HEAD --; then
+    echo ": Stashing local changes..."
+    git stash
+    HAS_STASH=true
+else
+    HAS_STASH=false
+fi
+
+echo "→ Synchronizing code with origin/main..."
+# We use reset --hard because GitHub history is squashed/rewritten
 git reset --hard origin/main
+
+if [ "$HAS_STASH" = true ]; then
+    echo ":: Re-applying local changes..."
+    # 'stash pop' might conflict if you changed the same lines GitHub changed
+    if git stash pop; then
+        echo "✓ Local changes merged."
+    else
+        echo "::: Conflicts detected! Manual resolution required in $ZPANEL_ROOT."
+        # We don't exit 1 here so the build still tries to run
+    fi
+fi
 
 # 4. Update Systemd Services if changed
 # Note: You can now pull these directly from the git repo instead of RAW URLs
 if [ -d "$ZPANEL_ROOT/services" ]; then
-    echo "→ Updating systemd services..."
-    sudo cp "$ZPANEL_ROOT/services/"*.service /etc/systemd/system/
-    sudo systemctl daemon-reload
+    # Only reload if the files are different from what's in /etc/systemd
+    if ! diff -r "$ZPANEL_ROOT/services/" /etc/systemd/system/ > /dev/null 2>&1; then
+        echo "→ Updating systemd services..."
+        sudo cp "$ZPANEL_ROOT/services/"*.service /etc/systemd/system/
+        sudo systemctl daemon-reload
+    fi
+    sudo chmod 644 /etc/systemd/system/zpanel-*.service || true
 fi
 
 # 5. Build REST

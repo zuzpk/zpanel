@@ -54,7 +54,7 @@ const DeployBranch : React.FC<{
 
         <Box as={`flex cols gap:5 p:50 rel flex:1`}>
             
-            <Cover when={deploying} />
+            {/* <Cover when={deploying} /> */}
             
             <Text as={`s:xl bold mb:20`}>Deploy Branch</Text>
 

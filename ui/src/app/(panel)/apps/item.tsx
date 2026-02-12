@@ -1,5 +1,5 @@
 "use client"
-import { Box, Button, Text, TRANSITION_CURVES, TRANSITIONS, Variant, css, Cover, Icon } from '@zuzjs/ui';
+import { Box, Button, Text, TRANSITION_CURVES, TRANSITIONS, Variant, css, Cover, Icon, Badge } from '@zuzjs/ui';
 import React, { useCallback } from 'react';
 import { ZuzApp, ZuzAppStatus } from '../../../types';
 import Link from 'next/link';
@@ -50,24 +50,34 @@ const AppItem : React.FC<{
         <Cover when={status == ZuzAppStatus.Loading} />   
         <Box as={`w:100% h:100% r:80 bg:$dim-hover p:30 flex cols`}>
             
-            <Box as={`bg:rgba[0,0,0,0.25] r:20 ass mb:15 p:2,8 flex aic gap:5`}>
+            {/* <Box as={`bg:rgba[0,0,0,0.25] r:20 ass mb:15 p:2,8 flex aic gap:5`}>
                 <Box as={`w:10 h:10 r:50 ${status == ZuzAppStatus.Stopped ? `bg:$red-500` : `bg:$green-500`}`} /> 
                 <Text as={`s:14 bold`}>{status}</Text>
+            </Box> */}
+            <Box as={[
+                `w:50 h:50 r:90 flex aic jcc s:24 bold mb:20 rel`,
+                `bg:${status == ZuzAppStatus.Stopped || status == ZuzAppStatus.Unknown
+                        ? `$manatee-500` : `$green-500`}`
+            ]}>
+                {/* <Badge 
+                    label={status}
+                    size={12}
+                    as={`abs bottom:-5 center-h`} /> */}
+                {(name || pkg?.name || `App`).charAt(0).toUpperCase()}
             </Box>
-            <Box as={`w:50 h:50 r:90 bg:rgba[0,0,0,0.4] flex aic jcc s:24 bold mb:20`}>{(pkg?.name || `App`).charAt(0).toUpperCase()}</Box>
-            <Text as={`s:18 bold mb:5`}>{pkg?.name}</Text>
-            <Text as={`s:14 opacity:0.75`}>{service}</Text>
-            <Text as={`s:14 opacity:0.5 mt:5`}>{git?.url}</Text>
-            <Text as={`s:14 opacity:0.5`}>{path}</Text>
+            <Text as={`s:18 bold mb:5 text-wrap`}>{name || pkg?.name || `App`}</Text>
+            <Text as={`s:14 opacity:0.75 text-wrap`}>{service}</Text>
+            <Text as={`s:14 opacity:0.5 mt:5 text-wrap`}>{git?.url}</Text>
+            <Text as={`s:14 opacity:0.5 text-wrap`}>{path}</Text>
             
         </Box>
-        <Box as={`flex aic gap:10 p:3,30,8,30`}>
+        <Box as={`flex aic gap:5 abs bottom:-20 center-h bg:$surface p:md r:md`}>
             {status == ZuzAppStatus.Stopped ? (
-                <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `start`)}  icon={`play`}>Start</Button>
+                <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `start`)}  icon={`play`} />
             ) : (
                 <>
-                    <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `stop`)} icon={`stop`}>Stop</Button>
-                    <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `restart`)} icon={`refresh`}>Restart</Button>
+                    <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `stop`)} icon={`stop`} />
+                    <Button variant={Variant.Small} as={`--btn p:8! flex:1 r:90!`} onClick={(e) =>  act(e, `restart`)} icon={`refresh`} />
                 </>
             )}
         </Box>

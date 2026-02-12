@@ -3,7 +3,7 @@ Description=ZPanel_UI
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 NotifyAccess=all
 ExecStart=/usr/bin/pnpm start
 User=root
