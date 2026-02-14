@@ -1,4 +1,4 @@
-import { Box, Button, Icon, Text, TRANSITION_CURVES, TRANSITIONS, useDelayed, Variant } from '@zuzjs/ui';
+import { Box, Button, Group, Icon, Text } from '@zuzjs/ui';
 import React from 'react';
 
 type DoneProps = {
@@ -13,42 +13,26 @@ type DoneProps = {
 
 const Done : React.FC<DoneProps> = ({ type, title, message, action }) => {
 
-    const mounted = useDelayed()
-    const _animation = {
-        transition: TRANSITIONS.SlideInBottom,
-        curve: TRANSITION_CURVES.Bounce,
-        duration: .5,
-        when: mounted
-    }
-    const _title = (m: string, delay = 0.1) => <Text as={`s:24 bold`} fx={{ ..._animation, delay }}>{m}</Text>
-    const _msg = (m: string, delay = 0.2) => <Text as={`s:16 bold`} fx={{ ..._animation, delay }}>{m}</Text>
-
-    return <Box as={`w:500 p:20 r:$radius flex aic jcc cols`}>
+    return <Group as={`w:500 p:20 r:$radius flex aic jcc cols`}>
         <Icon 
             name={type == `error` ? `lamp-on` : `emoji-happy`} 
             as={[
                 `s:50 mb:25`,
                 `${type == `error` ? `c:$red-800` : `c:$green-700`}`
-            ]} 
-            fx={{
-                transition: TRANSITIONS.SlideInTop,
-                curve: TRANSITION_CURVES.Bounce,
-                duration: .5,
-                when: mounted
-            }} />
-        { Array.isArray(title) ? <>{title?.map((m, i) => _title(m, 0.1 * (i + 1)))}</>
-                : _title(title || `Good Job`)}
+            ]} />
+        { Array.isArray(title) ? <>{title?.map((m, i) => <Text key={`done-title-${i}`} as={`s:24 bold`}>{m}</Text>)}</>
+                : <Text key={`done-title-default`} as={`s:24 bold`}>{title || `Good Job`}</Text>}
 
-        { Array.isArray(message) ? <>{message?.map((m, i) => _msg(m, 0.2 * (i + 1)))}</>
-                : _msg(message || `That was easy. You did it :)`)}
+        { Array.isArray(message) ? <>{message?.map((m, i) => <Text key={`done-msg-${i}`} as={`s:16 bold`}>{m}</Text>)}</>
+                : <Text key={`done-msg-main`} as={`s:16 bold`}>{message || `That was easy. You did it :)`}</Text>}
 
-        {action && <Box as={`mt:25`} fx={{ ..._animation, delay: .5 }}>
+        {action && <Box as={`mt:25`}>
             <Button onClick={() => {
                 if ( action?.on ) action.on()
-            }} variant={Variant.Small}>{action?.label ?? `Re-try`}</Button>
+            }}>{action?.label ?? `Re-try`}</Button>
         </Box>}
     
-    </Box>
+    </Group>
 }
 
 export default Done;

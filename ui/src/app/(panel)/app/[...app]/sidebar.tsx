@@ -54,6 +54,7 @@ const Sidebar : React.FC = (_props) => {
         withPost<{
             kind: string;
             apps: ZuzApp[];
+            users?: LinuxUser[];
         }>(`/_/apps/list`, { id })
             .then(resp => {
                 loaded.current = true
@@ -64,7 +65,8 @@ const Sidebar : React.FC = (_props) => {
                 else {
                     dispatch({
                         loading: false,
-                        list: resp.apps
+                        list: resp.apps,
+                        users: resp.users || users
                     })
                 }
             })

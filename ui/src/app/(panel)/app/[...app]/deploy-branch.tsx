@@ -1,6 +1,6 @@
 "use client"
-import { GitHubBranch } from '@/types';
-import { Box, Button, Cover, Text, useToast, Variant } from '@zuzjs/ui';
+import { GitHubBranch, ZuzApp } from '@/types';
+import { Box, Button, Cover, Span, Text, useToast, Variant } from '@zuzjs/ui';
 import React from 'react';
 import { useStore } from '@zuzjs/store';
 import { AppStore, Store } from '@/store';
@@ -8,11 +8,11 @@ import { withPost } from '@zuzjs/core';
 import ZuzTerminal from '../../terminal';
 
 const DeployBranch : React.FC<{
-    appId: string,
+    app: ZuzApp,
     branch: GitHubBranch,
     onClose: () => void
 }> = ({
-    appId,
+    app,
     branch,
     onClose
 }) => {
@@ -35,9 +35,9 @@ const DeployBranch : React.FC<{
             kind: string;
             message: string;
         }>(`/_/git/deploy`, {
-            appId,
+            appId: app.id,
             branch
-        })
+        }, 60000)
         .then(resp => {
             toast.success(resp.message)
             setDeploying(false)
@@ -56,10 +56,16 @@ const DeployBranch : React.FC<{
             
             {/* <Cover when={deploying} /> */}
             
-            <Text as={`s:xl bold mb:20`}>Deploy Branch</Text>
+            <Text as={`s:xl bold`}>{app.name}</Text>
+            <Text as={`s:lg mb:20`}>Deploy Branch</Text>
 
             <Text as={`s:15 bold`}>Confirm deployment?</Text>
-            <Text as={`s:15 mt:10`}>Branch {branch.name}</Text>
+
+            <Text as={`s:15 mt:15`}>Target Directory</Text>
+            <Text as={`s:16`}>{app.path}</Text>
+
+            <Text as={`s:15 mt:15`}>Branch</Text>
+            <Text as={`s:16`}>{branch.name}</Text>
             <Text as={`s:14 opacity:0.7 mb:30`}>{branch.sha}</Text>
 
             <Box as={`flex aic gap:10`}>
@@ -72,7 +78,7 @@ const DeployBranch : React.FC<{
             </Box>
         </Box>
         
-        { deploying && <ZuzTerminal appId={appId} /> }
+        { deploying && <ZuzTerminal appId={app.id} /> }
 
     </Box>
 }

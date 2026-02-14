@@ -4,6 +4,7 @@
 /rest/.env
 /rest/pnpm-lock.yaml
 /ui/pnpm-lock.yaml
+/rest/tsconfig.tsbuildinfo
 /rest/zpanel.pid
 _rest_src_app_app_index.ts
 /usr/apps/*

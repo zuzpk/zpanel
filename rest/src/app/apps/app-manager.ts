@@ -4,7 +4,7 @@ import { ZuzApp, ZuzAppStatus } from '@/lib/types';
 import cache from '@/cache';
 import fs from 'fs/promises';
 import { APP_NAME } from '@/config';
-import { uuid } from '@zuzjs/core';
+import { _, uuid } from '@zuzjs/core';
 import { createSystemUser } from '../user';
 import { execSync } from 'child_process';
 import pc from "picocolors"
@@ -84,7 +84,6 @@ class AppManager {
         return `https://x-access-token:${accessToken}@${url.replace(/^https?:\/\//, '')}`;
     }
 
-
     public broadcast(appId: string, msg: string, onData: (d: string) => void, level = "info") {
         const formatted = `\r\n\x1b[36m[ZPanel]\x1b[0m ${msg}\r\n`;
         onData(formatted);
@@ -94,13 +93,23 @@ class AppManager {
     /**
      * Reads all existing VHost JSON files from the data directory
      */
-    public async listApps(): Promise<ZuzApp[]> {
+    public async listApps(id = `-`): Promise<ZuzApp[]> {
 
-        // console.log(`Checking cache for apps:`, cache.apps.getAll())
-
-        if ( cache.apps.getAll().length > 0 ){
-            return cache.apps.getAll();
+        
+        if ( id == `-` ){
+            log.info(APP_NAME, `Fetching all apps...`);
+            if ( cache.apps.getAll().length > 0 ){
+                return cache.apps.getAll();
+            }
         }
+        else {
+            log.info(id, `Finding App # ${id}...`);
+            const ap = cache.apps.getById(id)
+            if ( ap ){
+                return [ap]
+            }
+        }
+        
 
         try {
 
@@ -137,7 +146,7 @@ class AppManager {
 
             cache.apps.addAll(_apps);
 
-            return _apps
+            return id == `-` ? _apps : _apps.filter(a => a.id == id);
 
         } catch (err) {
             log.error(APP_NAME, "Error listing VHosts:", err);
@@ -242,13 +251,46 @@ class AppManager {
         }
     }
 
+    /**
+     * Replace the systemd service file for the app
+     * if the service name has changed or if it's a new app without a service file yet.
+     * @param config The app configuration
+     * @param appDir The app directory
+     */
+    private async replaceServiceFile(config: ZuzApp, appDir: string) {
+        const serviceName = config.service;
+        const serviceFilePath = `/etc/systemd/system/${serviceName}`;
+        const serviceContent = this.generateServiceFile(config, appDir);
+        const escapedContent = serviceContent.replace(/'/g, "'\\''");
+        
+        // Use a safe heredoc or tee to write the file as root
+        execSyncSudo(`bash -c 'echo "${escapedContent}" > "${serviceFilePath}"'`);
+        execSyncSudo(`systemctl daemon-reload`);
+    }
 
     public async updateConfig(conf: ZuzApp) : Promise<ZuzApp> {
         const fromCache = cache.apps.getById(conf.id!)
         /* 
-            TODO: if new service name is different than 
-                - then generate service with that name
+            If new service name is different than 
+            the old service name, then generate service with that name
         */
+
+        const port = await this.guessAppPort(conf.id!, conf.path)
+
+        if ( !fromCache ){
+            log.info(APP_NAME, `[UpdateConfig] App not in cache...`);
+        }
+        else if ( 
+            fromCache.service !== conf.service &&
+            (await this.exists(`/etc/systemd/system/${fromCache.service}`))
+        ){
+            log.info(APP_NAME, `[UpdateConfig] Service name change for #${conf.id}: ${pc.red(conf.service)}`);
+            execSyncSudo(`rm -f "/etc/systemd/system/${fromCache.service}"`);
+            execSyncSudo(`systemctl daemon-reload`);
+            log.info(APP_NAME, `[UpdateConfig] Old service file ${pc.red(fromCache.service)} removed. Creating new...`);
+            await this.replaceServiceFile({ ...conf, port }, fromCache.path);
+        }
+        
         const config: ZuzApp = {
             id: conf.id,
             name: conf.name.trim(),
@@ -258,13 +300,14 @@ class AppManager {
             description: conf.description ?? fromCache?.description ?? ``,
             git: {
                 ...fromCache?.git,
+                pem: conf.git?.pem ?? fromCache?.git?.pem ?? ``,
                 url: conf.git?.url ?? fromCache?.git?.url ?? ``,
                 isPrivate: conf.git?.isPrivate ?? fromCache?.git?.isPrivate ?? false,
                 installationId: conf.git?.installationId ?? fromCache?.git?.installationId ?? ``,
                 appId: conf.git?.appId ?? fromCache?.git?.appId ?? ``
             },
             nodeVersion: `lts`,
-            port: 0,
+            port,
             user: conf.user,
             group: conf.user,
             path: conf.path,

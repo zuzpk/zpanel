@@ -9,6 +9,7 @@ import { _, time, withPost } from '@zuzjs/core';
 import { GitHubBranch } from '@/types';
 import DeployBranch from './deploy-branch';
 import Link from 'next/link';
+import Error from '@/app/error';
 
 const SourceCode : React.FC = (_props) => {
 
@@ -40,7 +41,7 @@ const SourceCode : React.FC = (_props) => {
     const deploy = (b: GitHubBranch) => {
         const dh = drawer.right(
             <DeployBranch
-                appId={appId}
+                app={currentApp!}
                 branch={b}
                 onClose={() => dialog.hide(dh)} />
         )
@@ -54,6 +55,7 @@ const SourceCode : React.FC = (_props) => {
     }
 
     useEffect(() => {
+        window.document.title = `Source Code`
         if ( currentApp){
             loadData()
         }
@@ -78,6 +80,14 @@ const SourceCode : React.FC = (_props) => {
                 loading={loading}
                 loadingRowCount={5}
                 animateRows={true}
+                emptyMessage={<Error 
+                    code={`No branches found`}
+                    title={`We couldn't find any branches in your repository.`}
+                    message={[
+                        `Please make sure your repository is valid and try again.`,
+                        `If it is private repository, make sure you have added the correct pem key in app settings.`
+                    ]}
+                />}
                 schema={[
                     {
                         id: `name`,

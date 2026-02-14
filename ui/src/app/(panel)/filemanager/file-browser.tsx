@@ -1,7 +1,7 @@
 "use client"
 import { useStore } from '@zuzjs/store';
 import { Box, Button, Crumb, ScrollView, Text } from '@zuzjs/ui';
-import React from 'react';
+import React, { useRef } from 'react';
 import { AppStore, Store } from '../../../store';
 import { pubsub } from '../../../cache';
 import { PubEvent } from '../../../types';
@@ -16,7 +16,7 @@ const FileBrowser : React.FC<{
         loading,
         currentDir 
     } = useStore<typeof AppStore.FileManager>(Store.FileManager);
-
+    const choosenDir = useRef(defaultDir || currentDir)
 
     return <ScrollView as={`flex:1 flex cols minW:800`}>
 
@@ -43,15 +43,18 @@ const FileBrowser : React.FC<{
             </Box>
 
             <Box as={`flex aic jcc gap:10`}>
-                <Button onClick={() => pubsub.emit(PubEvent.OnTargetDirChoosen)}>Done</Button>
+                <Button onClick={() => {
+                    onChoose(choosenDir.current)
+                    pubsub.emit(PubEvent.OnTargetDirChoosen)
+                }}>Done</Button>
                 <Button onClick={() => pubsub.emit(PubEvent.OnTargetDirChoosen)}>Cancel</Button>
             </Box>
 
         </Box>
         <FileManager 
             defaultDir={defaultDir}
-            onSelect={onChoose}
-            onDirChange={onChoose} />
+            onSelect={d => choosenDir.current = d}
+            onDirChange={d => choosenDir.current = d} />
 
     </ScrollView>
 }

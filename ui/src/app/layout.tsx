@@ -23,6 +23,14 @@ const RootLayout = ({ children, }: Readonly<{ children: React.ReactNode; }>) => 
         <ThemeProvider
           zuzMap={zuzMap}
           variant={Variant.Medium}
+          group={{
+            fx: {
+              transition: TRANSITIONS.SlideInBottom,
+              curve: TRANSITION_CURVES.Liquid,
+            },
+            fxDelay: 0.1,
+            fxStep: 0.05,
+          }}
           dialog={{
             transition: TRANSITIONS.SlideInBottom,
             curve: TRANSITION_CURVES.Liquid,

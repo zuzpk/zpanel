@@ -6,13 +6,15 @@ import { APP_NAME } from "@/config";
 import { _, dynamic, uuid } from "@zuzjs/core";
 import apm  from "./app-manager"
 import github, { GitHubBranch }  from "./github-manager"
+import { getLinuxUsers } from "../user";
 
 export const AppList = async (req: Request, resp: Response) => {
 
-  apm.listApps()
+  apm.listApps(req.body.id ? req.body.id : `-`)
     .then(apps => resp.send({ 
       kind: `appList`, 
-      apps 
+      apps,
+      users: getLinuxUsers() 
     }))
     .catch(err => resp.send({ error: err.message || `Failed to list apps` }))
 
@@ -85,6 +87,10 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     })
   }
 
+  if ( isprivate ){
+    await apm.savePemKey(appId, pem)
+  }
+  
   apm.updateConfig({
     
     id: appId,
@@ -96,6 +102,7 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     git: {
         url: repo,
         isPrivate: isprivate,
+        pem: pem ?? ``,
         branch: branch ?? ``,
         commit: commit ?? ``,
         installationId: installationId ?? ``,
@@ -109,10 +116,7 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     status: ZuzAppStatus.Unknown, //Change this from cache
             
   })
-  
-  if ( isprivate ){
-    await apm.savePemKey(appId, pem)
-  }
+
 
   return resp.send({
     kind: `appUpdated`,

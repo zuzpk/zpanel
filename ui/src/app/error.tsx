@@ -1,7 +1,6 @@
 "use client"
 import { ADMIN_EMAIL } from '@/config';
-import { useDelayed } from '@zuzjs/hooks';
-import { Box, Button, Span, Text, TRANSITION_CURVES, TRANSITIONS, Variant } from '@zuzjs/ui';
+import { Box, Button, Group, Span, Text } from '@zuzjs/ui';
 import React, { ReactNode } from 'react';
 
 type ErrorProps = {
@@ -16,22 +15,15 @@ type ErrorProps = {
 
 const Error : React.FC<ErrorProps> = ({ code, title, message, action }) => {
 
-    const mounted = useDelayed()
-    const _animation = {
-        transition: TRANSITIONS.SlideInBottom,
-        curve: TRANSITION_CURVES.Bounce,
-        duration: .5,
-        when: mounted
-    }
-    const _code = (m: string | number, delay = 0.1) => <Text as={`s:24 bold`} fx={{ ..._animation, delay }}>{m}</Text>
-    const _title = (m: string | number, delay = 0.1, i: number) => <Text key={`--error-title-${i}-${m.toString().replace(/\s+/g, `-`)}`} as={`s:18 bold`} fx={{ ..._animation, delay }}>{m}</Text>
-    const _msg = (m: string | ReactNode, delay = 0.2, i: number) => <Text key={`--error-title-${i}-${(React.isValidElement(m) ? `rnc` : m?.toString())!.replace(/\s+/g, `-`)}`} as={`s:16`} fx={{ ..._animation, delay }}>{m}</Text>
+    const _msg = (m: string | ReactNode, delay = 0.2, i: number) => <Text key={`--error-title-${i}-${(React.isValidElement(m) ? `rnc` : m?.toString())!.replace(/\s+/g, `-`)}`} as={`s:16`}>{m}</Text>
 
-    return <Box as={`rel zIndex:3 app-error w:100% p:20vh,20,20,20 r:$radius flex aic jcc cols`}>
-        {_code(code || `psst!`)}
-
-        { Array.isArray(title) ? <>{title?.map((m, i) => _title(m, 0.1 * (i + 1), i))}</>
-                : _title(title || `it's not you, it's us`, 0.1, 0)}
+    return <Group
+        as={`rel zIndex:3 app-error w:100% p:20vh,20,20,20 r:$radius flex aic jcc cols`}>
+        
+        <Text as={`s:24 bold`}>{code || `psst!`}</Text>
+        
+        { Array.isArray(title) ? <>{title?.map((m, i) => <Text key={`--error-title-${i}-${m.toString().replace(/\s+/g, `-`)}`} as={`s:18 bold`}>{m}</Text>)}</>
+                : <Text key={`--error-title-main`} as={`s:18 bold`}>{title || `it's not you, it's us`}</Text>}
 
         <Box as={`h:10`} />
         { message ? 
@@ -42,13 +34,13 @@ const Error : React.FC<ErrorProps> = ({ code, title, message, action }) => {
                 {_msg(<Span>please try again in few or contact <b>{ADMIN_EMAIL}</b></Span>, .4, 0)}
             </>}
 
-        {action && <Box as={`mt:25`} fx={{ ..._animation, delay: .5 }}>
+        {action && <Box as={`mt:25`}>
             <Button onClick={() => {
                 if ( action?.on ) action.on()
-            }} variant={Variant.Small}>{action?.label || `Re-try`}</Button>
+            }}>{action?.label || `Re-try`}</Button>
         </Box>}
     
-    </Box>
+    </Group>
 }
 
 export default Error;

@@ -19,6 +19,7 @@ const Settings : React.FC = (_props) => {
     const userSelect = useRef<SelectHandler>(null)
 
     useEffect(() => {
+        document.title = `Settings`
         if ( 
             users.length > 0 && 
             currentApp &&
