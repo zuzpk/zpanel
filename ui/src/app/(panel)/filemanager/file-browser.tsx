@@ -1,11 +1,12 @@
 "use client"
 import { useStore } from '@zuzjs/store';
-import { Box, Button, Crumb, ScrollView, Text } from '@zuzjs/ui';
+import { Box, Button, Crumb, ScrollView, Text, useDialog } from '@zuzjs/ui';
 import React, { useRef } from 'react';
 import { AppStore, Store } from '../../../store';
 import { pubsub } from '../../../cache';
 import { PubEvent } from '../../../types';
 import FileManager from '.';
+import CreateFolder from './create-folder';
 
 const FileBrowser : React.FC<{
     onChoose: (dir: string) => void,
@@ -17,6 +18,19 @@ const FileBrowser : React.FC<{
         currentDir 
     } = useStore<typeof AppStore.FileManager>(Store.FileManager);
     const choosenDir = useRef(defaultDir || currentDir)
+    const dialog = useDialog()
+
+    const createFolder = () => {
+        const _d = dialog.show({
+            title: `Create New Folder`,
+            message: <CreateFolder 
+                parent={currentDir} 
+                onSuccess={(newDir) => {
+                    _d.hide()
+                }} />,
+            closeDelay: 10
+        })
+    }
 
     return <ScrollView as={`flex:1 flex cols minW:800`}>
 
@@ -48,6 +62,10 @@ const FileBrowser : React.FC<{
                     pubsub.emit(PubEvent.OnTargetDirChoosen)
                 }}>Done</Button>
                 <Button onClick={() => pubsub.emit(PubEvent.OnTargetDirChoosen)}>Cancel</Button>
+                <Button 
+                    as={`ml:10`}
+                    icon={`folder-add`}
+                    onClick={createFolder}>New Folder</Button>
             </Box>
 
         </Box>
