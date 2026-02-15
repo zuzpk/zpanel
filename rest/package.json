@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@zuzjs/core": "^0.3.4",
-    "@zuzjs/orm": "^0.3.7",
+    "@zuzjs/orm": "^0.3.11",
     "body-parser": "^2.2.1",
     "connect-redis": "^9.0.0",
     "cookie": "^1.1.1",

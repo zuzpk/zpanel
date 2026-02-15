@@ -1,14 +1,14 @@
-import path from 'path';
-import { Logger, execSyncSudo, log, runStreamedCommand, sudoDirExists } from "@/lib";
-import { ZuzApp, ZuzAppStatus } from '@/lib/types';
 import cache from '@/cache';
-import fs from 'fs/promises';
 import { APP_NAME } from '@/config';
-import { _, uuid } from '@zuzjs/core';
-import { createSystemUser } from '../user';
+import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from "@/lib";
+import { AppSwitchMode, ZuzApp, ZuzAppStatus } from '@/lib/types';
+import { uuid } from '@zuzjs/core';
 import { execSync } from 'child_process';
-import pc from "picocolors"
-import github from "./github-manager"
+import fs from 'fs/promises';
+import path from 'path';
+import pc from "picocolors";
+import { createSystemUser } from '../user';
+import github from "./github-manager";
 
 class AppManager {
 
@@ -73,6 +73,31 @@ class AppManager {
 
         return 0
 
+    }
+
+    /**
+     * Updates the status of an app.
+     * @param appId The ID of the app to update.
+     * @param mode The new mode to set for the app.
+     * @returns True if the update was successful, false otherwise.
+     */
+    public async UpdateAppStatus(appId: string, mode: AppSwitchMode) {
+        const app = cache.apps.getById(appId);
+        if (!app) {
+            log.error(APP_NAME, `UpdateAppStatus failed: App with ID ${appId} not found in cache.`);
+            return false;
+        }
+        try {
+            execSyncSudo(`systemctl ${mode} ${app.service}`);
+
+            app.status = mode === 'start' || mode === `restart` ? ZuzAppStatus.Running : ZuzAppStatus.Stopped;
+            cache.apps.update(app);
+
+            return true;
+        } catch (err) {
+            log.error(APP_NAME, `Failed to ${mode} app ${app.name} (${app.service}) (${app.id}):`, err);
+            return false;
+        }
     }
 
     private gitCmd(cmd: string, appDir: string) { 
@@ -423,7 +448,12 @@ class AppManager {
         const appDir = config.path == `/home` ? 
             path.join(baseDir, appName) : config.path;
 
-        if ( sudoDirExists(appDir) ){
+        const pkgJsonExists = await this.exists(path.join(appDir, `package.json`))
+
+        if ( 
+            sudoDirExists(appDir) &&
+            pkgJsonExists
+        ){
             await this.createSafetySnapshot(config.id, appDir, onData);
         }
 
@@ -466,7 +496,9 @@ class AppManager {
             );
         
             // 2. Source Update
-            if (!sudoDirExists(appDir)) {
+            if (
+                !sudoDirExists(appDir) || !pkgJsonExists
+            ) {
                 this.broadcast(config.id, `#2 Initial clone of ${branch}...`, onData);
                 await runStreamedCommand(
                     config.id,

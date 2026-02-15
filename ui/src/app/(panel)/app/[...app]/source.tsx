@@ -1,15 +1,15 @@
 "use client"
-import { Box, Button, Table, Text, useToast, useDrawer, useDialog, css } from '@zuzjs/ui';
-import { AppStore, Store } from "@/store";
-import createStore, { useStore } from "@zuzjs/store";
-import React, { useEffect } from 'react'
-import PageTitle from '../../page-title';
-import { useParams } from 'next/navigation';
-import { _, time, withPost } from '@zuzjs/core';
-import { GitHubBranch } from '@/types';
-import DeployBranch from './deploy-branch';
-import Link from 'next/link';
 import Error from '@/app/error';
+import { AppStore, Store } from "@/store";
+import { GitHubBranch } from '@/types';
+import { _, time, withPost } from '@zuzjs/core';
+import { useStore } from "@zuzjs/store";
+import { Box, Button, css, Table, Text, useDialog, useDrawer, useToast } from '@zuzjs/ui';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import React, { useEffect } from 'react';
+import PageTitle from '../../page-title';
+import DeployBranch from './deploy-branch';
 
 const SourceCode : React.FC = (_props) => {
 
@@ -43,7 +43,7 @@ const SourceCode : React.FC = (_props) => {
             <DeployBranch
                 app={currentApp!}
                 branch={b}
-                onClose={() => dialog.hide(dh)} />
+                onClose={() => dh.close()} />
         )
         // const dh = dialog.show({
         //     title: `Deploy Branch`,
@@ -52,6 +52,10 @@ const SourceCode : React.FC = (_props) => {
         //         branch={b}
         //         onClose={() => dialog.hide(dh)} />
         // });
+    }
+
+    const pushLocalToGit = async () => {
+        
     }
 
     useEffect(() => {
@@ -87,6 +91,10 @@ const SourceCode : React.FC = (_props) => {
                         `Please make sure your repository is valid and try again.`,
                         `If it is private repository, make sure you have added the correct pem key in app settings.`
                     ]}
+                    action={{
+                        label: `Push Local to Git`,
+                        on: pushLocalToGit  
+                    }}
                 />}
                 schema={[
                     {

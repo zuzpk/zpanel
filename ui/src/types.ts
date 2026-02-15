@@ -39,6 +39,8 @@ export enum PubEvent {
     ConnectTLog = "CONNECT_TLOG",
 }
 
+export type AppSwitchMode = `start` | `stop` | `restart`
+
 export enum ZuzAppStatus {
     Running = 'running',
     Stopped = 'stopped',

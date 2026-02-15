@@ -1,40 +1,34 @@
-import { dynamic } from "@zuzjs/core";
-import { Request, Response } from "express";
-import { 
-    SaveWebPushToken, 
-    Signin, 
-    Signout,
-    listLinuxUsers,
-    listLinuxGroups
-} from "@/app/user";
-import { 
-    AppList, 
-    AppServiceModified, 
-    AppServiceStatusSwitched, 
+import {
+    AppList,
+    AppServiceModified,
+    AppServiceStatusSwitched,
+    ChangeAppMode,
     // CheckForUpdate,
     CreateApp,
     DeployGitBranch,
     ListGitBranches,
     ListGitCommits,
     UpdateAppSettings,
-    // UpdateAppStatus,
 } from "@/app/apps";
-import { 
+import {
     CreateEmptyFile,
     CreateFolder,
-    ListFilesAndFolders 
+    ListFilesAndFolders
 } from "@/app/fm";
-import { clone } from "@/app/git";
-import { 
-    LoadFileContent, 
-    GetServerList, 
-    SaveVirtualHost 
+import {
+    GetServerList,
+    LoadFileContent,
+    SaveVirtualHost
 } from "@/app/nginx";
-import { GitHubBranch } from "@/app/apps/github-manager";
-import apm  from "@/app/apps/app-manager"
-import cache from "@/cache";
-import { log } from "@/lib";
-import { APP_NAME } from "./config";
+import {
+    SaveWebPushToken,
+    Signin,
+    Signout,
+    listLinuxGroups,
+    listLinuxUsers
+} from "@/app/user";
+import { dynamic } from "@zuzjs/core";
+import { Request, Response } from "express";
 
 const Routes : dynamic = {
     WebSocket: {
@@ -102,6 +96,7 @@ const Routes : dynamic = {
                 // CheckForUpdate,
                 Create: CreateApp,
                 UpdateAppSettings,
+                Switch: ChangeAppMode
                 // Start: UpdateAppStatus,
                 // Stop: UpdateAppStatus,
                 // Restart: UpdateAppStatus,

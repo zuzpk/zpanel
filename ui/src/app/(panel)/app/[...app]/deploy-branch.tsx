@@ -1,11 +1,16 @@
 "use client"
 import { GitHubBranch, ZuzApp } from '@/types';
-import { Box, Button, Cover, Span, Text, useToast, Variant } from '@zuzjs/ui';
-import React from 'react';
-import { useStore } from '@zuzjs/store';
-import { AppStore, Store } from '@/store';
 import { withPost } from '@zuzjs/core';
+import { Alert, Box, Button, Text, useToast } from '@zuzjs/ui';
+import React from 'react';
 import ZuzTerminal from '../../terminal';
+
+const enum DeployState {
+    Idle = -1,
+    Deploying = 0,
+    Deployed = 1,
+    Failed = 2
+}
 
 const DeployBranch : React.FC<{
     app: ZuzApp,
@@ -26,7 +31,10 @@ const DeployBranch : React.FC<{
     // } = useStore<typeof AppStore.Git>(Store.Git)
     const toast = useToast()
 
+
     const [ deploying, setDeploying ] = React.useState(false)
+    const [ deployed, setDeployed ] = React.useState<DeployState>(DeployState.Idle)
+    const [ message, setMessage ] = React.useState<string | null>(null)
 
     const sendBranchForDeploy = async () => {
 
@@ -39,12 +47,12 @@ const DeployBranch : React.FC<{
             branch
         }, 60000)
         .then(resp => {
-            toast.success(resp.message)
-            setDeploying(false)
+            setMessage(resp.message)
+            setDeployed(DeployState.Deployed)
         })
         .catch(error => {
-            toast.error(error.message || `Request was not processed...`)
-            setDeploying(false)
+            setDeployed(DeployState.Failed)
+            setMessage(error.message || `Deployment failed...`)
         })
 
     }
@@ -54,8 +62,12 @@ const DeployBranch : React.FC<{
 
         <Box as={`flex cols gap:5 p:50 rel flex:1`}>
             
-            {/* <Cover when={deploying} /> */}
-            
+            { deployed != DeployState.Idle && <Alert
+                as={`mb:20`}
+                type={deployed == DeployState.Deployed ? `success` : `error`}
+                title={deployed == DeployState.Deployed ? `Deployment successful!` : `Deployment failed!`}
+                message={deployed == DeployState.Deployed ? message : message} /> }
+
             <Text as={`s:xl bold`}>{app.name}</Text>
             <Text as={`s:lg mb:20`}>Deploy Branch</Text>
 
@@ -69,12 +81,12 @@ const DeployBranch : React.FC<{
             <Text as={`s:14 opacity:0.7 mb:30`}>{branch.sha}</Text>
 
             <Box as={`flex aic gap:10`}>
-                <Button 
+                { deployed == DeployState.Idle && <Button 
                     disabled={deploying}
-                    onClick={sendBranchForDeploy}>Deploy</Button>
+                    onClick={sendBranchForDeploy}>Deploy</Button> }
                 <Button 
-                    disabled={deploying}
-                    onClick={onClose}>Cancel</Button>
+                    disabled={deploying && deployed == DeployState.Idle}
+                    onClick={onClose}>{ deployed == DeployState.Deployed ? `Close` : `Cancel`}</Button>
             </Box>
         </Box>
         

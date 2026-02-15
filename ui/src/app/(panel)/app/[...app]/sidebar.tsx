@@ -1,20 +1,19 @@
 "use client"
-import { Box, css, Text, Icon, Group, TRANSITIONS, TRANSITION_CURVES, Image, Spinner, useToast } from '@zuzjs/ui';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { APP_NAME, APP_VERSION } from "@/config"
-import { sectionComponents } from './layout';
 import { AppStore, Store } from '@/store';
-import { useStore } from '@zuzjs/store';
-import { withPost } from '@zuzjs/core';
-import { LinuxUser, ZuzApp } from '@/types';
+import { AppSwitchMode, LinuxUser, ZuzApp, ZuzAppStatus } from '@/types';
+import { dynamic, withPost } from '@zuzjs/core';
 import { useDelayed } from '@zuzjs/hooks';
+import { useStore } from '@zuzjs/store';
+import { Box, Button, css, Icon, Spinner, Text, useDialog, useToast, Variant } from '@zuzjs/ui';
+import Link from 'next/link';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { sectionComponents } from './layout';
 
 const Sidebar : React.FC = (_props) => {
 
     const { app } = useParams()
-    const [ id, section ] = app
+    const [ id, section ] = app as string[]
     const pathName = usePathname()
     const when = useDelayed()
     const { loading, error, users, list, dispatch  } = useStore<typeof AppStore.Apps>(Store.Apps)
@@ -23,6 +22,7 @@ const Sidebar : React.FC = (_props) => {
     const loaded = useRef(false)
     const toast = useToast()
     const router = useRouter()
+    const dialog = useDialog()
 
     const appNav = useMemo(() => [
         {
@@ -86,6 +86,33 @@ const Sidebar : React.FC = (_props) => {
         .then(resp => dispatch({ users: resp.users }))
         .catch(resp => dispatch({ users: [] }))
     }, [])
+
+    const switchAppMode = async (appId: string, mode: AppSwitchMode) : Promise<dynamic> => withPost(`/_/apps/switch`, {
+        appId,
+        mode
+    })
+
+    const act = (action: AppSwitchMode) => {
+        dialog.show({
+            title: `${action.charAt(0).toUpperCase() + action.slice(1)} App`,
+            message: `Are you sure you want to ${action} this app?`,
+            action: [
+                {
+                    label: `Yes, ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+                    onClick: () => switchAppMode(id, action)
+                        .then(() => {
+                            toast.success(`App ${action}ed successfully!`)
+                            dispatch({ 
+                                list: list.map(l => l.id == id ? 
+                                    { ...l, status: action == `start` || action == `restart` ? ZuzAppStatus.Running : ZuzAppStatus.Stopped } : l) })
+                        })
+                        .catch(err => {
+                            toast.error(`Failed to ${action} app: ${err.message}`)
+                        })
+                }
+            ]
+        })
+    }
     
     useEffect(() => {
         if (
@@ -99,22 +126,33 @@ const Sidebar : React.FC = (_props) => {
     return <Box
         as={`maxW:270 flex:1 h:full p:25 flex cols gap:8`}>
 
-            <Box as={`logo flex cols gap:4 p:10 mb:20`}>
+            <Box as={`logo flex cols gap:4 p:10`}>
                 <Text as={`s:20 bold`}>App</Text>
                 {currentApp && <Text as={`text-wrap s:14`}>{currentApp?.name ?? `...`}</Text>}
             </Box> 
 
-       {loading ? <Spinner />
-        : appNav.map((n, i) => <Link 
-            key={`app-nav-${i}-${n.label}`}
-            href={n.href} 
-            className={css([
-                `flex aic ass r:20 gap:10 tdn p:6,10 opacity:0.5 &hover(bg:$dim-light opacity:1)`,
-                `${pathName == n.href ? `bg:$dim-hover opacity:0.9` : ``}`
-            ])}>
-            <Icon name={n.icon} as={`s:20`} />
-            <Text as={`s:18`}>{n.label}</Text>
-       </Link>)}
+            <Box as={`flex aic gap:5 mb:20 pl:10`}>
+                {!loading && currentApp && currentApp?.status == ZuzAppStatus.Stopped ? (
+                    <Button as={`bold`} variant={Variant.XSmall} onClick={() => act(`start`)}  icon={`play`}>Start</Button>
+                ) : (
+                    <>
+                        <Button as={`bold`} variant={Variant.XSmall} onClick={() => act(`stop`)} icon={`stop`}>Stop</Button>
+                        <Button as={`bold`} variant={Variant.XSmall} onClick={() => act(`restart`)} icon={`refresh`}>Restart</Button>
+                    </>
+                )}
+            </Box>
+
+            {loading ? <Spinner />
+                : appNav.map((n, i) => <Link 
+                    key={`app-nav-${i}-${n.label}`}
+                    href={n.href} 
+                    className={css([
+                        `flex aic ass r:20 gap:10 tdn p:6,10 opacity:0.5 &hover(bg:$dim-light opacity:1)`,
+                        `${pathName == n.href ? `bg:$dim-hover opacity:0.9` : ``}`
+                    ])}>
+                    <Icon name={n.icon} as={`s:20`} />
+                    <Text as={`s:18`}>{n.label}</Text>
+            </Link>)}
 
     </Box>
 }

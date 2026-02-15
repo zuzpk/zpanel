@@ -1,4 +1,4 @@
-import { APP_VERSION } from "./config";
+import { APP_VERSION, LOADING_MSG } from "./config";
 import { FileItem, GitHubBranch, GitHubCommit, LinuxUser, VirtualHost, ZuzApp } from "./types";
 
 export enum Store {
@@ -15,7 +15,9 @@ export const AppStore = {
         version: APP_VERSION,
         debug: true,
         token: null,
-        theme: `system`
+        theme: `system`,
+        loading: false,
+        loadingMessage: LOADING_MSG,
     },
     User : {
         loading: true,

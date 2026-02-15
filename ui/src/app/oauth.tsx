@@ -1,12 +1,12 @@
 "use client"
-import { LocalDB, SESS_ID } from '@/config';
+import { LocalDB } from '@/config';
 import { Store } from '@/store';
 import { User } from '@/types';
-import { useStore } from '@zuzjs/store';
-import { useDB } from '@zuzjs/hooks';
 import { withGet } from '@zuzjs/core';
+import { useDB } from '@zuzjs/hooks';
+import { useStore } from '@zuzjs/store';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 const Authenticate : React.FC<{
     redirect: boolean

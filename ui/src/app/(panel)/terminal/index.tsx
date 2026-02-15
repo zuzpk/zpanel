@@ -1,15 +1,17 @@
 "use client"
-import { Box, Cover, Terminal, TerminalHandler } from '@zuzjs/ui';
-import React, { memo, useEffect, useRef, useState } from 'react';
 import { pubsub } from '@/cache';
 import { PubEvent } from '@/types';
+import { Box, Cover, Terminal, TerminalHandler } from '@zuzjs/ui';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { terminalService } from './service'; // Import the singleton
 
 const ZuzTerminal: React.FC<{
     autoStart?: boolean,
     appId?: string,
+    maxHeight?: string
 }> = ({
     appId,
+    maxHeight = `50vh`
 }) => {
     const terminalRef = useRef<TerminalHandler>(null);
     const [isConnected, setIsConnected] = useState<boolean>(true);
@@ -45,7 +47,7 @@ const ZuzTerminal: React.FC<{
     }, [appId]); // Re-run only if appId changes
 
     return (
-        <Box as={`rel`}>
+        <Box as={`rel`} style={{ '--terminal-max-height' : maxHeight }}>
             <Cover when={!isConnected} />
             <Box>
                 <Terminal ref={terminalRef} />

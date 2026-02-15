@@ -16,7 +16,9 @@ export const GA_MEASUREMENT_ID : string | null = null;
 export const FB_PIXEL_ID : string | null = null;
 export const ADMIN_EMAIL = `hello@zuz.com.pk`;
 
+export const LOADING_MSG = `working`
 export const REDIRECT_AFTER_OAUTH = `/hub`;
+export const REDIRECT_FOR_OAUTH = `/`;
 
 export const LocalDB = {
     You: {

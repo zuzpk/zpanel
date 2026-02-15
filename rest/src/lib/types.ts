@@ -62,6 +62,8 @@ export enum Events {
     TLog = "tlog"
 }
 
+export type AppSwitchMode = `start` | `stop` | `restart`
+
 export enum ZuzAppStatus {
     Running = 'running',
     Stopped = 'stopped',

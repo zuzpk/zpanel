@@ -1,12 +1,12 @@
-import { Request, Response } from "express"
 import cache from "@/cache";
-import { log } from "@/lib";
-import { ZuzApp, ZuzAppStatus } from "@/lib/types";
 import { APP_NAME } from "@/config";
-import { _, dynamic, uuid } from "@zuzjs/core";
-import apm  from "./app-manager"
-import github, { GitHubBranch }  from "./github-manager"
+import { log } from "@/lib";
+import { ZuzAppStatus } from "@/lib/types";
+import { _ } from "@zuzjs/core";
+import { Request, Response } from "express";
 import { getLinuxUsers } from "../user";
+import apm from "./app-manager";
+import github, { GitHubBranch } from "./github-manager";
 
 export const AppList = async (req: Request, resp: Response) => {
 
@@ -263,6 +263,26 @@ export const DeployGitBranch = async (req: Request, resp: Response) => {
         })
   })
 
+}
+
+export const ChangeAppMode = async (req: Request, resp: Response) => {
+  const { appId, mode } = req.body;
+  log.info(APP_NAME, "ChangeAppMode called", { appId, mode });
+  apm.UpdateAppStatus(appId, mode)
+    .then(() => {
+      log.info(APP_NAME, `App ${mode}ed successfully!`, { appId, mode });
+      return resp.send({
+        kind: `appModeChanged`,
+        message: `App ${mode}ed successfully!`
+      })
+    })
+    .catch(err => {
+      log.error(APP_NAME, `Failed to ${mode} app:`, { appId, mode, error: err });
+      return resp.send({
+        error: `appModeChangeFailed`,
+        message: `Failed to ${mode} app: ${err.message}`
+      })
+    })
 }
 
 /**
