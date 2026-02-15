@@ -15,7 +15,7 @@
     "@zuzjs/core": "^0.3.2",
     "@zuzjs/hooks": "^0.1.3",
     "@zuzjs/store": "^0.1.6",
-    "@zuzjs/ui": "^1.0.18",
+    "@zuzjs/ui": "^1.0.22",
     "js-cookie": "^3.0.5",
     "next": "16.1.6",
     "react": "^19.2.3",

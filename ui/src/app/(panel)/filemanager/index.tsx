@@ -97,6 +97,14 @@ const FileManager : React.FC<{
                         <Text as={`s:13`}>{time(ro.modified, `lll`)}</Text>
                     </Box>
                 },
+                // {
+                //     id: `action`,
+                //     maxW: 170,
+                //     value: <Text as={`s:12`}>Modified</Text>,
+                //     render: ro => <Box as={`flex aic gap:8`}>
+                //         <Text as={`s:13`}>{time(ro.modified, `lll`)}</Text>
+                //     </Box>
+                // },
             ]}
             rows={items}
         />

@@ -1,9 +1,9 @@
 "use client"
-import { Box, Button, Drawer, DRAWER_SIDE, useDrawer, Input, Text, Variant } from '@zuzjs/ui';
-import React, { useCallback, useEffect, useRef } from 'react';
-import FileBrowser from './file-browser';
 import { pubsub } from '@/cache';
 import { PubEvent } from '@/types';
+import { Box, Button, DrawerController, Input, useDrawer } from '@zuzjs/ui';
+import React, { useEffect, useRef } from 'react';
+import FileBrowser from './file-browser';
 
 const DirChooser : React.FC<{
     defaultPath: string,
@@ -11,11 +11,11 @@ const DirChooser : React.FC<{
 }> = ({ defaultPath, onChoose }) => {
 
     const homeDir = useRef<HTMLInputElement>(null)
-    const drawerId = useRef(-1)
+    const drawer = useRef<DrawerController>(null)
 
     const browser = useDrawer()
     const chooseDir = () => {
-        drawerId.current = browser.right(
+        drawer.current = browser.right(
             <FileBrowser
                 defaultDir={defaultPath}
                 onChoose={d => {
@@ -28,7 +28,7 @@ const DirChooser : React.FC<{
     }
 
     useEffect(() => {
-        pubsub.on(PubEvent.OnTargetDirChoosen, () => browser.close(drawerId.current))
+        pubsub.on(PubEvent.OnTargetDirChoosen, () => drawer.current.close())
     }, [])
 
     return <Box as={`flex aic gap:15`}>

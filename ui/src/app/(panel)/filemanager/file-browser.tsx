@@ -26,9 +26,9 @@ const FileBrowser : React.FC<{
             message: <CreateFolder 
                 parent={currentDir} 
                 onSuccess={(newDir) => {
+                    pubsub.emit(PubEvent.OpenDirectory, newDir)
                     _d.hide()
-                }} />,
-            closeDelay: 10
+                }} />
         })
     }
 

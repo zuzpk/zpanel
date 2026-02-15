@@ -39,6 +39,7 @@ $vars: (
     overlay-blur: 5px,
 
     dialog-radius: var(--radius),
+    dialog-action-radius: var(--dialog-radius),
 
     sheet-radius: var(--radius),
     sheet-closer-color: var(--text),
@@ -142,6 +143,8 @@ $dark: (
     terminal-background: #1e1e2e,
     terminal-foreground: #cdd6f4,
 
+    dialog-action: #0d1618,
+    
     sheet-bg: var(--dim-light),
     sheet-body: var(--dim-light),
     sheet-shadow: 0px 0px 0px transparent,
