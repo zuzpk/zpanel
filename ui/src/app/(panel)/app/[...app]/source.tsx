@@ -1,7 +1,7 @@
 "use client"
 import Error from '@/app/error';
 import { AppStore, Store } from "@/store";
-import { GitHubBranch } from '@/types';
+import { GitAction, GitHubBranch } from '@/types';
 import { _, time, withPost } from '@zuzjs/core';
 import { useStore } from "@zuzjs/store";
 import { Box, Button, css, Table, Text, useDialog, useDrawer, useToast } from '@zuzjs/ui';
@@ -38,11 +38,12 @@ const SourceCode : React.FC = (_props) => {
         })
     }
 
-    const deploy = (b: GitHubBranch) => {
+    const deploy = (action: GitAction, b?: GitHubBranch) => {
         const dh = drawer.right(
             <DeployBranch
                 app={currentApp!}
                 branch={b}
+                mode={action}
                 onClose={() => dh.close()} />
         )
         // const dh = dialog.show({
@@ -93,7 +94,7 @@ const SourceCode : React.FC = (_props) => {
                     ]}
                     action={{
                         label: `Push Local to Git`,
-                        on: pushLocalToGit  
+                        on: () => deploy(`push`)
                     }}
                 />}
                 schema={[
@@ -115,7 +116,7 @@ const SourceCode : React.FC = (_props) => {
                         id: `action`,
                         value: ``,
                         maxW: 150,
-                        render: (v, d) => <Button onClick={() => deploy(v)}>Deploy</Button>
+                        render: (v, d) => <Button onClick={() => deploy(`deploy`, v)}>Deploy</Button>
                     }
                 ]}
                 rows={branches} />

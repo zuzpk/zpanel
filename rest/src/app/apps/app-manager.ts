@@ -1,14 +1,15 @@
 import cache from '@/cache';
 import { APP_NAME } from '@/config';
 import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from "@/lib";
+import { LOG_SYMBOLS } from '@/lib/logger';
 import { AppSwitchMode, ZuzApp, ZuzAppStatus } from '@/lib/types';
-import { uuid } from '@zuzjs/core';
+import { _, uuid } from '@zuzjs/core';
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import pc from "picocolors";
 import { createSystemUser } from '../user';
-import github from "./github-manager";
+import git from "./github-manager";
 
 class AppManager {
 
@@ -17,23 +18,6 @@ class AppManager {
 
     private async exists(p: string) { return fs.access(p).then(() => true).catch(() => false); }
 
-    private validatePath(appDir: string) {
-        const forbiddenPaths = [
-            '/zpanel',
-            '/etc',
-            '/root',
-            `/var`
-        ];
-
-        // Resolve the absolute path to prevent "../" bypasses
-        const absolutePath = path.resolve(appDir);
-
-        for (const forbidden of forbiddenPaths) {
-            if (absolutePath === forbidden || absolutePath.startsWith(`${forbidden}/`)) {
-                throw new Error(`SECURITY ALERT: Attempted to run command on protected directory: ${forbidden}`);
-            }
-        }
-    }
 
     private async guessAppPort(appId: string, appDir: string): Promise<number> {
 
@@ -98,11 +82,6 @@ class AppManager {
             log.error(APP_NAME, `Failed to ${mode} app ${app.name} (${app.service}) (${app.id}):`, err);
             return false;
         }
-    }
-
-    private gitCmd(cmd: string, appDir: string) { 
-        this.validatePath(appDir);
-        return `sudo git -C "${appDir}" ${cmd}`; 
     }
 
     private gitBuildPrivateUrl(accessToken: string | null, url: string): string {
@@ -434,6 +413,101 @@ class AppManager {
         }
     }
 
+    
+    private async getGitAccessToken(config: ZuzApp, onData: (chunk: string) => void) : Promise<string | null> {
+
+        const pem = await this.getPemKey(config.id)
+        let accessToken : string | null = null;
+
+        if ( config.git?.isPrivate ){
+            
+            if ( !pem ){
+                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: PEM key required for private repo.`, onData, "error");
+                return null
+            }
+
+            accessToken = await git.getAccessToken(
+                config.git.appId!, 
+                config.git.installationId!, 
+                pem
+            )
+
+            if ( !accessToken ){
+                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
+                return null 
+            }
+
+            return accessToken
+
+        }
+
+        return null
+    }
+    /**
+     * This updates the config and performs a full rebuild.
+     * Handles first-time setup AND branch updates.
+     */
+    public async pushToBranch(
+        config: ZuzApp, 
+        branch: string, 
+        commitMsg: string,
+        onData: (chunk: string) => void
+    ) {
+        
+        const appDir = config.path
+
+        if ( 
+            !sudoDirExists(appDir)
+        ){
+            this.broadcast(config.id, `${config.path} Not Exist.`, onData);
+            return;
+        }
+
+        const init = git.initGitSafely(config.path)
+
+        if ( init == `new` ){
+            execSyncSudo(git.cmd(`branch -M ${branch}`, config.path))
+            execSyncSudo(git.cmd(`remote add origin ${config.git?.url}`, config.path))
+        }
+        else{
+            execSyncSudo(git.cmd(`checkout -b ${branch} || true`, config.path)); 
+        }
+        
+        const accessToken = await this.getGitAccessToken(config, onData)
+        if ( !accessToken ){
+            return;
+        }
+
+        const gitUrl = config.git?.isPrivate ? 
+            this.gitBuildPrivateUrl(accessToken, config.git!.url)
+            : config.git?.url;
+        
+        await runStreamedCommand(
+            config.id,
+            [
+                `sudo git config --global --add safe.directory "${appDir}"`,
+                git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
+            ].join(` && `),
+            onData
+        );
+
+        const commit = await git.safeCommit(config.path, _(commitMsg).isEmpty() ? undefined : commitMsg, true)
+
+        if ( commit.status === false ){
+            this.broadcast(config.id, commit.message, onData);
+            return;
+        }
+
+        await runStreamedCommand(
+            config.id,
+            git.cmd(`push -u origin ${branch}`, appDir),
+            onData
+        );
+
+        this.broadcast(config.id, `${LOG_SYMBOLS.success} Pushed successfully to ${branch}`, onData);
+
+    }
+
     /**
      * This updates the config and performs a full rebuild.
      * Handles first-time setup AND branch updates.
@@ -467,7 +541,7 @@ class AppManager {
             if ( !pem ){
                 return this.broadcast(config.id, `❌ Deployment failed: PEM key required for private repo.`, onData, "error");
             }
-            accessToken = await github.getAccessToken(
+            accessToken = await git.getAccessToken(
                 config.git.appId!, 
                 config.git.installationId!, 
                 pem
@@ -510,10 +584,10 @@ class AppManager {
                 await runStreamedCommand(
                     config.id,
                     [
-                        this.gitCmd(`remote set-url origin "${gitUrl}"`, appDir),
-                        this.gitCmd(`fetch origin`, appDir),
-                        this.gitCmd(`checkout -B ${branch}`, appDir),
-                        this.gitCmd(`reset --hard origin/${branch}`, appDir),
+                        git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
+                        git.cmd(`fetch origin`, appDir),
+                        git.cmd(`checkout -B ${branch}`, appDir),
+                        git.cmd(`reset --hard origin/${branch}`, appDir),
                     ].join(' && '),
                     onData
                 );
@@ -527,7 +601,7 @@ class AppManager {
             this.broadcast(config.id, `⚡ Detected port ${pc.cyan(appPort)}`, onData);
 
             // Update local config state
-            const latestSha = execSync(this.gitCmd(`rev-parse HEAD`, appDir)).toString().trim();
+            const latestSha = execSync(git.cmd(`rev-parse HEAD`, appDir)).toString().trim();
             config.git!.branch = branch;
             config.git!.commit = latestSha;
             config.path = appDir;

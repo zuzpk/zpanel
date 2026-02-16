@@ -1,6 +1,6 @@
 import { RemoveWebPushToken } from "@/app/user";
 import { API_KEY, APP_URL, APP_VERSION, VAPID } from "@/config";
-import { withZuzAuth, Logger } from "@/lib";
+import { Logger, withZuzAuth } from "@/lib";
 import Routes from "@/routes";
 import { _, dynamic } from "@zuzjs/core";
 import { execSync } from "child_process";

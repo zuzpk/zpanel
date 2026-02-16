@@ -1,5 +1,5 @@
 "use client"
-import { GitHubBranch, ZuzApp } from '@/types';
+import { GitAction, GitHubBranch, ZuzApp } from '@/types';
 import { withPost } from '@zuzjs/core';
 import { Alert, Box, Button, Text, useToast } from '@zuzjs/ui';
 import React from 'react';
@@ -14,10 +14,12 @@ const enum DeployState {
 
 const DeployBranch : React.FC<{
     app: ZuzApp,
-    branch: GitHubBranch,
+    mode?: GitAction,
+    branch?: GitHubBranch,
     onClose: () => void
 }> = ({
     app,
+    mode = `deploy`,
     branch,
     onClose
 }) => {
@@ -42,7 +44,7 @@ const DeployBranch : React.FC<{
         withPost<{
             kind: string;
             message: string;
-        }>(`/_/git/deploy`, {
+        }>(`/_/git/${mode}`, {
             appId: app.id,
             branch
         }, 60000)
@@ -69,21 +71,25 @@ const DeployBranch : React.FC<{
                 message={deployed == DeployState.Deployed ? message : message} /> }
 
             <Text as={`s:xl bold`}>{app.name}</Text>
-            <Text as={`s:lg mb:20`}>Deploy Branch</Text>
+            <Text as={`s:lg mb:20`}>{mode == `deploy` ? `Deploy` : mode == `push` ? `Push to` : `Pull`} Branch</Text>
 
-            <Text as={`s:15 bold`}>Confirm deployment?</Text>
+            <Text as={`s:15 bold`}>Confirm {mode == `deploy` ? `deployment` : mode == `push` ? `push` : `pull`}?</Text>
 
             <Text as={`s:15 mt:15`}>Target Directory</Text>
             <Text as={`s:16`}>{app.path}</Text>
-
+            
             <Text as={`s:15 mt:15`}>Branch</Text>
-            <Text as={`s:16`}>{branch.name}</Text>
-            <Text as={`s:14 opacity:0.7 mb:30`}>{branch.sha}</Text>
+            {branch ? <>
+                <Text as={`s:16`}>{branch.name}</Text>
+                <Text as={`s:14 opacity:0.7 mb:30`}>{branch.sha}</Text>
+            </> : <>
+                <Text as={`s:14 c:$red-500 mb:30`}>No branch found, {mode}ing to main</Text>
+            </>}
 
             <Box as={`flex aic gap:10`}>
                 { deployed == DeployState.Idle && <Button 
                     disabled={deploying}
-                    onClick={sendBranchForDeploy}>Deploy</Button> }
+                    onClick={sendBranchForDeploy}>{mode == `deploy` ? `Deploy` : mode == `push` ? `Push` : `Pull`}</Button> }
                 <Button 
                     disabled={deploying && deployed == DeployState.Idle}
                     onClick={onClose}>{ deployed == DeployState.Deployed ? `Close` : `Cancel`}</Button>

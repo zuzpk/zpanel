@@ -3,12 +3,9 @@ import { execSyncSudo } from "./core";
 import { log } from "./logger";
 
 export * from "./core";
-export { 
-    Logger, echo, log,  withAccessLogger, logHistory,
-    type LogEntry, 
-} from "./logger";
-export { withZuzAuth } from "./zauth";
+export { echo, log, Logger, logHistory, withAccessLogger, type LogEntry } from "./logger";
 export { handleSocketMessage } from "./socket";
+export { withZuzAuth } from "./zauth";
 
 /**
  * Checks if a directory exists using sudo
@@ -23,6 +20,25 @@ export const sudoDirExists = (dirPath: string): boolean => {
     } catch (error) {
         // If test -d fails, it throws an error (exit code 1)
         return false;
+    }
+};
+
+/**
+ * Checks if a directory is empty using sudo
+ * @param dirPath Absolute path to the directory
+ * @returns boolean
+ */
+export const sudoDirIsEmpty = (dirPath: string): boolean => {
+    try {
+        // ls -A lists all files except . and ..
+        // wc -l counts the number of lines
+        const output = execSyncSudo(`ls -A "${dirPath}" | wc -l`);
+        
+        // If the result is "0", the directory is empty
+        return parseInt(output.toString().trim(), 10) === 0;
+    } catch (error) {
+        // If the directory doesn't exist or isn't accessible, we treat it as not empty/error
+        return false; 
     }
 };
 

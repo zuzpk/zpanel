@@ -1,10 +1,9 @@
-import { headers } from "@/lib"
-import { dynamic, _ } from "@zuzjs/core"
-import { NextFunction, Request, Response } from "express"
-import winston from "winston"
-import path from "path"
-import pc from "picocolors";
 import { pubsub } from "@/cache"
+import { headers } from "@/lib"
+import { _, dynamic } from "@zuzjs/core"
+import { NextFunction, Request, Response } from "express"
+import pc from "picocolors"
+import winston from "winston"
 import { Events } from "./types"
 
 // Circular buffer for in-memory logs
@@ -99,3 +98,28 @@ export const log = {
     warn: (appId: string, message: string, ...data: any[]) => echo(appId, `warn`, [ message, ...data.map(d => _(d).isObject() ? JSON.stringify(d) : d ) ].join(' ')),
     error: (appId: string, message: string, ...data: any[]) => echo(appId, `error`, [ message, ...data.map(d => _(d).isObject() ? JSON.stringify(d) : d ) ].join(' ')),
 }
+
+/**
+ * Standard CMD/Terminal symbols (ASCII only)
+ */
+export const LOG_SYMBOLS = {
+    // Basic status
+    success: pc.green('✔'),        // Checkmark replacement
+    error:   pc.red(`X`),         // Cross mark replacement
+    warn:    pc.yellow(`⚡`),         // Warning / Circle replacement
+    info:    pc.gray(`○`),         // Information / Bullet
+    debug:   pc.cyan('#'),         // Debug / Hash
+
+    // Progress/Process indicators
+    pending: '[...]',       // Loading
+    wait:    '[?]',         // Awaiting input/response
+    add:     '[+]',         // Item added/created
+    remove:  '[-]',         // Item removed/deleted
+    arrow:   '->',          // Direction/Flow
+    
+    // Borders for logging sections
+    divider: '--------------------------------------------------',
+    bullet:  '>'
+} as const;
+
+export type LogSymbol = keyof typeof LOG_SYMBOLS;
