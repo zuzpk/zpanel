@@ -219,5 +219,8 @@ export const zuzMap: Record<string, string> = {
   "maxW:700": "zm0028u8",
   "p:20,50": "zp008ffg",
   "mt:40": "zm00hepk",
-  "c:$red-500": "zc00ljq6"
+  "c:$red-500": "zc00ljq6",
+  "c:$gray-500": "zc00jis6",
+  "c:$grey-500": "zc0010wq",
+  "c:$gray-600": "zc00m3ef"
 };

@@ -1,8 +1,8 @@
 "use client"
 import { GitAction, GitHubBranch, ZuzApp } from '@/types';
 import { withPost } from '@zuzjs/core';
-import { Alert, Box, Button, Text, useToast } from '@zuzjs/ui';
-import React from 'react';
+import { Alert, Box, Button, Input, Span, Text, useToast } from '@zuzjs/ui';
+import React, { useRef } from 'react';
 import ZuzTerminal from '../../terminal';
 
 const enum DeployState {
@@ -34,6 +34,7 @@ const DeployBranch : React.FC<{
     const toast = useToast()
 
 
+    const commitMsg = useRef<HTMLInputElement>(null)
     const [ deploying, setDeploying ] = React.useState(false)
     const [ deployed, setDeployed ] = React.useState<DeployState>(DeployState.Idle)
     const [ message, setMessage ] = React.useState<string | null>(null)
@@ -81,12 +82,16 @@ const DeployBranch : React.FC<{
             <Text as={`s:15 mt:15`}>Branch</Text>
             {branch ? <>
                 <Text as={`s:16`}>{branch.name}</Text>
-                <Text as={`s:14 opacity:0.7 mb:30`}>{branch.sha}</Text>
+                <Text as={`s:14 opacity:0.7`}>{branch.sha}</Text>
             </> : <>
-                <Text as={`s:14 c:$red-500 mb:30`}>No branch found, {mode}ing to main</Text>
+                <Text as={`s:14 c:$red-500`}>No branch found, {mode}ing to main</Text>
             </>}
 
-            <Box as={`flex aic gap:10`}>
+            <Text as={`s:15 mt:15`}>Commit Message</Text>
+            <Text as={`s:14 c:$gray-600`}>If empty, auto commit message (Timestamp <Span as={`bold`}>{new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}</Span>) will be generated</Text>
+            <Input ref={commitMsg} placeholder={`Message...`} />
+
+            <Box as={`flex aic gap:10 mt:30`}>
                 { deployed == DeployState.Idle && <Button 
                     disabled={deploying}
                     onClick={sendBranchForDeploy}>{mode == `deploy` ? `Deploy` : mode == `push` ? `Push` : `Pull`}</Button> }
