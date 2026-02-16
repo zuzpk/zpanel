@@ -265,6 +265,47 @@ export const DeployGitBranch = async (req: Request, resp: Response) => {
 
 }
 
+export const PushGitBranch = async (req: Request, resp: Response) => {
+
+  const { 
+    appId, 
+    //Commit message
+    cmsg = ``,
+    branch = `main`
+  } = req.body
+
+  const app = cache.apps.getById(appId)
+
+  if ( !app ){
+    return resp.send({
+      error: `appNotFound`,
+      message: `App not found or you don't have permission to access it.`
+    })
+  }
+
+  return apm.pushToBranch(
+    app, 
+    branch,
+    cmsg, 
+    str => log.info(appId, str)
+  )
+  .then(() => {
+    log.info(APP_NAME, `Pushed to ${branch} successfully`)
+    return resp.send({
+        kind: `branchPushed`,
+        message: `Pushed to ${branch} successfully`
+      })
+    })
+    .catch(() => {
+      log.error(APP_NAME, `PushBranchError`)
+      return resp.send({
+          error: `branchPushFailed`,
+          message: `Failed pushing to target branch`
+        })
+  })
+
+}
+
 export const ChangeAppMode = async (req: Request, resp: Response) => {
   const { appId, mode } = req.body;
   log.info(APP_NAME, "ChangeAppMode called", { appId, mode });

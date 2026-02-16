@@ -8,6 +8,7 @@ import {
     DeployGitBranch,
     ListGitBranches,
     ListGitCommits,
+    PushGitBranch,
     UpdateAppSettings,
 } from "@/app/apps";
 import {
@@ -85,6 +86,7 @@ const Routes : dynamic = {
                 Commits: ListGitCommits,
                 Branches: ListGitBranches,
                 Deploy: DeployGitBranch,
+                Push: PushGitBranch,
             }
         },
 
