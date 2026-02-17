@@ -116,7 +116,10 @@ const SourceCode : React.FC = (_props) => {
                         id: `action`,
                         value: ``,
                         maxW: 150,
-                        render: (v, d) => <Button onClick={() => deploy(`deploy`, v)}>Deploy</Button>
+                        render: (v, d) => <Box as={`flex aic gap:10`}>
+                            <Button onClick={() => deploy(`push`, v)}>Push</Button>
+                            <Button onClick={() => deploy(`deploy`, v)}>Deploy</Button>
+                        </Box>
                     }
                 ]}
                 rows={branches} />
