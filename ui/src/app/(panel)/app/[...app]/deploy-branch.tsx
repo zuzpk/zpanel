@@ -47,7 +47,7 @@ const DeployBranch : React.FC<{
             message: string;
         }>(`/_/git/${mode}`, {
             appId: app.id,
-            branch
+            branch: branch?.name ?? `main`
         }, 60000)
         .then(resp => {
             setMessage(resp.message)
@@ -102,7 +102,8 @@ const DeployBranch : React.FC<{
                 { deployed == DeployState.Idle && <Button 
                     disabled={deploying}
                     onClick={sendBranchForDeploy}>{mode == `deploy` ? `Deploy` : mode == `push` ? `Push` : `Pull`}</Button> }
-                <Button 
+                <Button
+                    kind={`ghost`}
                     disabled={deploying && deployed == DeployState.Idle}
                     onClick={onClose}>{ deployed == DeployState.Deployed ? `Close` : `Cancel`}</Button>
             </Box>
