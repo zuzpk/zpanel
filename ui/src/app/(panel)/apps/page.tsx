@@ -1,16 +1,15 @@
 "use client"
-import { Box, Drawer, DRAWER_SIDE, DrawerHandler, SHEET, Sheet, SheetHandler, Spinner, SPINNER, Table, Text, TRANSITION_CURVES, TRANSITIONS, useDialog, useToast } from '@zuzjs/ui';
-import React, { useCallback, useEffect, useRef } from 'react';
-import { useStore } from "@zuzjs/store"
+import Error from '@/app/error';
 import { AppStore, Store } from '@/store';
 import { withPost } from '@zuzjs/core';
+import { useStore } from "@zuzjs/store";
+import { Box, useDialog, useToast } from '@zuzjs/ui';
+import { useRouter } from "next/navigation";
+import React, { useCallback, useEffect } from 'react';
 import { ZuzApp, ZuzAppStatus } from '../../../types';
-import AppItem from './item';
 import PageTitle from '../page-title';
-import { useRouter } from "next/navigation"
-import Error from '@/app/error';
-import AppEditor from './app-editor';
 import CreateApp from './create-app';
+import AppItem from './item';
 
 const Page : React.FC = (_props) => {
     
@@ -114,7 +113,7 @@ const Page : React.FC = (_props) => {
                             title: `Create App`,
                             message: <CreateApp onSuccess={_app => {
                                 toast.success(_app.message || `App created successfully`)
-                                createApp.hide(createAppDialog)
+                                createAppDialog.hide()
                                 router.push(`/app/${_app.appId}/dashboard`)
                             }} />
                         })

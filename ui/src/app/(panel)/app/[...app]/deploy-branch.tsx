@@ -47,7 +47,7 @@ const DeployBranch : React.FC<{
             message: string;
         }>(`/_/git/${mode}`, {
             appId: app.id,
-            branch: branch?.name ?? `main`
+            branch: mode == `deploy` ? branch : branch?.name ?? `main`
         }, 60000)
         .then(resp => {
             setMessage(resp.message)

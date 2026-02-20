@@ -25,6 +25,9 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
+
+    sudo npm i -g @zuzjs/pm@latest
+
     echo "✓ ZuzPanel is already up to date."
     exit 0
 fi
@@ -104,5 +107,7 @@ if [ -d "$UI_DIR" ]; then
         fi
     )
 fi
+
+sudo npm i -g @zuzjs/pm@latest
 
 echo "=== Update Successful ==="
