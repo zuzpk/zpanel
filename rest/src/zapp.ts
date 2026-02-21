@@ -28,7 +28,15 @@ import { exec } from "node:child_process"
 import Routes from "./routes"
 import pc from "picocolors";
 
-const redisClient = createClient();
+const redisClient = createClient({
+    socket: {
+        connectTimeout: 5000,
+        reconnectStrategy: (retries: number) => {
+            if (retries > 10) return new Error("Redis connection failed");
+            return Math.min(retries * 100, 3000);
+        }
+    }
+});
 redisClient.on('error', (err: any) => log.error(APP_NAME, 'Redis Client Error', err));
 redisClient.connect().catch((err: any) => log.error(APP_NAME, 'Redis Connection Error', err));
 const redisStore = new RedisStore({
@@ -167,22 +175,22 @@ httpServer.listen(process.env.APP_PORT, async () => {
 
 })
 
-// Add this to the end of zapp.ts
-const gracefulShutdown = () => {
+const gracefulShutdown = async () => {
     log.error(APP_NAME, "Received kill signal, shutting down gracefully...");
-    httpServer.close(() => {
-        log.error(APP_NAME, "HTTP server closed.");
-        redisClient.quit().then(() => {
-            log.error(APP_NAME, "Redis disconnected.");
-            process.exit(0);
-        });
-    });
+    httpServer.close(() => {});
+    
+    try {
+        // Use a timeout for Redis disconnect
+        await Promise.race([
+            redisClient.disconnect(), // disconnect() is more forceful than quit()
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 1000))
+        ]);
+    } catch (e) {
+        log.error(APP_NAME, "Redis forced disconnect.");
+    }
 
-    // Force close after 2 seconds if graceful fails
-    setTimeout(() => {
-        log.error(APP_NAME, "Could not close connections in time, forceful shutdown");
-        process.exit(1);
-    }, 2000);
+    process.exit(0);
+    
 };
 
 process.on('SIGTERM', gracefulShutdown);

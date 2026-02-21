@@ -7,11 +7,14 @@
   "author": "ZuzPK",
   "license": "ISC",
   "scripts": {
+
     "build:watch": "tsc --watch --incremental & tsc-alias -w",
+    "dev": "concurrently \"npm run build:watch\" \"node dist/zapp.js\"",
+    
     "build": "tsc && tsc-alias",
-    "dev": "concurrently \"npm run build:watch\" \"node dist/index.js\"",
-    "start": "node dist/index.js",
+    "start": "zpm start dist/zapp --name zpanel-backend",
     "db": "npx zorm pull"
+
   },
   "dependencies": {
     "@zuzjs/core": "^0.3.4",

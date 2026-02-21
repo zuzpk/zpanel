@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const API_URL = "http://127.0.0.1:2082/_/";
 const APP_URL = "dad.zuzcdn.net";
+const WSS_URL = `${API_URL}wss/`
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require("fs");
 const path = require("path");
@@ -16,7 +17,8 @@ const nextConfig: NextConfig = {
   async rewrites(){
     return [
       { source: "/_/:method*/:action*", destination: "${API_URL}:method*/:action*" },
-      { source: "/_/:method*", destination: "${API_URL}:method*" }
+      { source: "/_/:method*", destination: "${API_URL}:method*" },
+      { source: "/wss/:path*", destination: "${WSS_URL}:path*" }
     ]
   },
   typedRoutes: false,

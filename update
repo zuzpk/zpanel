@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===============================================
-# ZuzPanel Auto-Updater
+# ZuzPanel Auto-Updater & ZPM Manager
 # Checks GitHub for updates and rebuilds apps
 # Run as root or user with sudo privileges
 # ===============================================
@@ -13,6 +13,7 @@ REPO_URL="https://github.com/zuzpk/zpanel.git"
 ZPANEL_ROOT="/zpanel"
 REST_DIR="$ZPANEL_ROOT/rest"
 UI_DIR="$ZPANEL_ROOT/ui"
+SERVICE_NAME="zpanel-zpm"
 
 echo "=== ZuzPanel Auto-Updater ==="
 cd "$ZPANEL_ROOT"
@@ -23,6 +24,53 @@ git fetch origin main
 # 2. Check for changes
 LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
+
+# Update ZPM
+echo "→ Ensuring @zuzjs/pm is latest..."
+sudo npm i -g @zuzjs/pm@latest
+
+# --- NEW: ZPM SERVICE GENERATION ---
+echo "→ Configuring $SERVICE_NAME..."
+
+# Find the global node_modules path dynamically
+NPM_GLOBAL_ROOT=$(npm root -g)
+ZPM_DAEMON_PATH="$NPM_GLOBAL_ROOT/@zuzjs/pm/dist/daemon.cjs"
+NODE_BIN=$(which node)
+
+if [ ! -f "$ZPM_DAEMON_PATH" ]; then
+    echo "✗ Error: daemon.cjs not found at $ZPM_DAEMON_PATH"
+    # Fallback check for .js extension
+    ZPM_DAEMON_PATH="$NPM_GLOBAL_ROOT/@zuzjs/pm/dist/daemon.js"
+fi
+
+# Generate the systemd unit file
+cat <<EOF | sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null
+[Unit]
+Description=ZuzJS Process Manager Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=$ZPANEL_ROOT
+ExecStart=$NODE_BIN $ZPM_DAEMON_PATH
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=ZPM_NAMESPACE=zuzjs-pm
+# Ensure global bins are in path
+Environment=PATH=$(dirname $NODE_BIN):/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "→ Restarting $SERVICE_NAME..."
+sudo systemctl daemon-reload
+sudo systemctl enable $SERVICE_NAME
+sudo systemctl restart $SERVICE_NAME
+# -----------------------------------
 
 if [ "$LOCAL" = "$REMOTE" ]; then
 
@@ -63,18 +111,6 @@ if [ "$HAS_STASH" = true ]; then
     fi
 fi
 
-# 4. Update Systemd Services if changed
-# Note: You can now pull these directly from the git repo instead of RAW URLs
-if [ -d "$ZPANEL_ROOT/services" ]; then
-    # Only reload if the files are different from what's in /etc/systemd
-    if ! diff -r "$ZPANEL_ROOT/services/" /etc/systemd/system/ > /dev/null 2>&1; then
-        echo "→ Updating systemd services..."
-        sudo cp "$ZPANEL_ROOT/services/"*.service /etc/systemd/system/
-        sudo systemctl daemon-reload
-    fi
-    sudo chmod 644 /etc/systemd/system/zpanel-*.service || true
-fi
-
 # 5. Build REST
 if [ -d "$REST_DIR" ]; then
     echo "→ Rebuilding REST..."
@@ -107,7 +143,5 @@ if [ -d "$UI_DIR" ]; then
         fi
     )
 fi
-
-sudo npm i -g @zuzjs/pm@latest
 
 echo "=== Update Successful ==="

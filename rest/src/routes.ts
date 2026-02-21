@@ -33,9 +33,10 @@ import { Request, Response } from "express";
 
 const Routes : dynamic = {
     WebSocket: {
-        private: ['/ws', '/ws/terminal'],
+        internal: ['/wss/zpm'],
+        private: ['/wss', '/wss/terminal'],
         public: []
-    },
+    }, 
     Get: {
         Ping: (req: Request, resp: Response) => resp.json({ kind: "pong" }),
         Auth: (req: Request, resp: Response) => resp.json(

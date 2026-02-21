@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { Request, Response } from "express";
 import Hashids from "hashids";
 import nodemailer from 'nodemailer';
+import path from "path";
 import webpush from "web-push";
 
 const encryptionAlgo = 'aes-256-cbc';
@@ -91,6 +92,9 @@ export const handleAPI = (requestMethod: "Post" | "Get", req: Request, resp: Res
 
     const [ key, method, action, ...rest ] = req.url.split(`/`).filter(Boolean)
     
+    const _404 = path.join(__dirname, '..', '..', 'public', '404.html')
+    // console.log(key, method, action, rest)
+
     if ( key == API_KEY && method ){
         try{
             
@@ -159,18 +163,15 @@ export const handleAPI = (requestMethod: "Post" | "Get", req: Request, resp: Res
             })
 
         }catch(e){
-            return resp.status(403).send({
-                error: `403`,
-                message: req.lang!.youAreLost
-            })
+
+            return resp.status(403).sendFile(_404);
 
         }
     }
 
-    return resp.status(404).send({
-        error: `404`,
-        message: req.lang!.youAreLost
-    })
+
+    return resp.status(403).sendFile(_404);
+
 }
 
 export const sendPush = async (

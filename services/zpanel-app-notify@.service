@@ -1,6 +1,0 @@
-[Unit]
-Description=ZPanel App Status Notifier for %i
-
-[Service]
-Type=oneshot
-ExecStart=/zpanel/bin/zapp-notify.sh %i
