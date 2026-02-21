@@ -1,12 +1,16 @@
 import cache from '@/cache';
 import { APP_NAME } from '@/config';
-import { log } from '@/lib';
+import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from '@/lib';
+import { LOG_SYMBOLS } from '@/lib/logger';
 import { AppSwitchMode, ZuzApp } from '@/lib/types';
-import { uuid } from '@zuzjs/core';
+import { _, uuid } from '@zuzjs/core';
 import { WorkerStatus, zpm } from "@zuzjs/pm";
+import { execSync } from 'child_process';
+import fss from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import pc from "picocolors";
+import git from "./github-manager";
 
 class AppManager {
 
@@ -53,6 +57,12 @@ class AppManager {
 
         return 0
 
+    }
+
+    public broadcast(appId: string, msg: string, onData: (d: string) => void, level = "info") {
+        const formatted = `\r\n\x1b[36m[ZPanel]\x1b[0m ${msg}\r\n`;
+        onData(formatted);
+        log[level]?.(appId, msg);
     }
 
     private appName(n: string){ return n.trim().replace(/[^a-z0-9-]/gi, '-').toLowerCase(); }
@@ -108,7 +118,7 @@ class AppManager {
 
     }
 
-    
+
     public async updateConfig(conf: ZuzApp) : Promise<ZuzApp> {
 
         const fromCache = cache.apps.getById(conf.id!)
@@ -167,6 +177,10 @@ class AppManager {
         await fs.writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8');
     }
 
+
+    private gitBuildPrivateUrl(accessToken: string | null, url: string): string {
+        return `https://x-access-token:${accessToken}@${url.replace(/^https?:\/\//, '')}`;
+    }
 
     /**
      * Updates the status of an app.
@@ -308,13 +322,149 @@ class AppManager {
         }
     }
 
+
+    private async createSafetySnapshot(appId: string, appDir: string, onData: (d: string) => void): Promise<string> {
+
+        this.broadcast(appId, `Creating safety snapshot before deployment...`, onData);
+
+        const timestamp = Math.floor(Date.now() / 1000);
+        const branchName = `snapshot/${timestamp}`;
+        
+        // 1. create the new snapshot
+        const snapshotCommands = [
+            `git -C "${appDir}" add -A`,
+            // We use || true so it doesn't crash if there are no changes to commit
+            `git -C "${appDir}" commit -m "Auto-snapshot" --no-verify || true`,
+            `git -C "${appDir}" branch "${branchName}"`,
+            `git -C "${appDir}" reset --soft HEAD~1 || true`
+        ];
+
+        // 2. delete snapshots older than 30 days (2592000 seconds)
+        // We parse the timestamp from the branch name to decide what to delete
+        const thirtyDaysAgo = timestamp - 2592000;
+        const cleanupCommand = `git -C "${appDir}" branch --list 'snapshot/*' | awk '{print $1}' | while read b; do 
+            ts=$(echo $b | cut -d'/' -f2); 
+            if [ "$ts" -lt "${thirtyDaysAgo}" ]; then 
+                git -C "${appDir}" branch -D "$b"; 
+            fi; 
+        done`;
+
+        try {
+            this.broadcast(appId, `Creating safety snapshot ${branchName}...`, onData);
+            
+            // Execute Snapshot
+            execSyncSudo(snapshotCommands.join(' && '));
+            
+            // Execute Cleanup (we don't 'await' or fail the deploy if cleanup fails)
+            try {
+                execSyncSudo(cleanupCommand);
+            } catch (cleanupErr) {
+                log.error(appId, "Snapshot cleanup failed, skipping...", cleanupErr);
+            }
+
+            return branchName;
+        } catch (e) {
+            log.error(appId, "Snapshot failed", e);
+            return "";
+        }
+    }
+
+
+    private async getGitAccessToken(config: ZuzApp, onData: (chunk: string) => void) : Promise<string | null> {
+
+        const pem = await this.getPemKey(config.id)
+        let accessToken : string | null = null;
+
+        if ( config.git?.isPrivate ){
+            
+            if ( !pem ){
+                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: PEM key required for private repo.`, onData, "error");
+                return null
+            }
+
+            accessToken = await git.getAccessToken(
+                config.git.appId!, 
+                config.git.installationId!, 
+                pem
+            )
+
+            if ( !accessToken ){
+                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
+                return null 
+            }
+
+            return accessToken
+
+        }
+
+        return null
+    }
+
+    /**
+     * This updates the config and performs a full rebuild.
+     * Handles first-time setup AND branch updates.
+     */
     public async pushToBranch(
         config: ZuzApp, 
         branch: string, 
         commitMsg: string,
         onData: (chunk: string) => void
     ) {
+        
+        const appDir = config.path
+
+        if ( 
+            !sudoDirExists(appDir)
+        ){
+            this.broadcast(config.id, `${config.path} Not Exist.`, onData);
+            return;
+        }
+
+        const init = git.initGitSafely(config.path)
+
+        if ( init == `new` ){
+            execSyncSudo(git.cmd(`branch -M ${branch}`, config.path))
+            execSyncSudo(git.cmd(`remote add origin ${config.git?.url}`, config.path))
+        }
+        else{
+            execSyncSudo(git.cmd(`checkout -b ${branch} || true`, config.path)); 
+        }
+        
+        const accessToken = await this.getGitAccessToken(config, onData)
+        if ( !accessToken ){
+            return;
+        }
+
+        const gitUrl = config.git?.isPrivate ? 
+            this.gitBuildPrivateUrl(accessToken, config.git!.url)
+            : config.git?.url;
+        
+        await runStreamedCommand(
+            config.id,
+            [
+                `sudo git config --global --add safe.directory "${appDir}"`,
+                git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
+            ].join(` && `),
+            onData
+        );
+
+        const commit = await git.safeCommit(config.path, _(commitMsg).isEmpty() ? undefined : commitMsg, true)
+
+        if ( commit.status === false ){
+            this.broadcast(config.id, commit.message, onData);
+            return;
+        }
+
+        await runStreamedCommand(
+            config.id,
+            git.cmd(`push -u origin ${branch}`, appDir),
+            onData
+        );
+
+        this.broadcast(config.id, `${LOG_SYMBOLS.success} Pushed successfully to ${branch}`, onData);
+
     }
+
     /**
      * This updates the config and performs a full rebuild.
      * Handles first-time setup AND branch updates.
@@ -325,6 +475,132 @@ class AppManager {
         onData: (chunk: string) => void
     ) {
 
+        const appDir = config.path;
+
+        const pkgJsonExists = await this.exists(path.join(appDir, `package.json`))
+
+        if ( 
+            sudoDirExists(appDir) &&
+            pkgJsonExists
+        ){
+            await this.createSafetySnapshot(config.id, appDir, onData);
+        }
+
+        log.info(config.id, `Initializing Deployment`, pc.green(branch));
+
+        log.info(config.id, `Initializing Deployment`, pc.green(branch));
+
+
+        const pem = await this.getPemKey(config.id)
+        let accessToken : string | null = null;
+
+        if ( config.git?.isPrivate ){
+            if ( !pem ){
+                return this.broadcast(config.id, `❌ Deployment failed: PEM key required for private repo.`, onData, "error");
+            }
+            accessToken = await git.getAccessToken(
+                config.git.appId!, 
+                config.git.installationId!, 
+                pem
+            )
+
+            if ( !accessToken ){
+                return this.broadcast(config.id, `❌ Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
+            }
+
+        }
+
+        const gitUrl = config.git?.isPrivate ? 
+            this.gitBuildPrivateUrl(accessToken, config.git!.url)
+            : config.git?.url;
+
+
+        try {
+            
+            // Setup Environment
+            this.broadcast(config.id, "#1 Preparing environment...", onData);
+
+            await runStreamedCommand(
+                config.id,
+                `sudo git config --global --add safe.directory "${appDir}"`,
+                onData
+            );
+
+             // Source Update
+            if (
+                !sudoDirExists(appDir) || !pkgJsonExists
+            ) {
+                this.broadcast(config.id, `#2 Initial clone of ${branch}...`, onData);
+                await runStreamedCommand(
+                    config.id,
+                    `sudo git clone -b ${branch} --single-branch ${gitUrl} "${appDir}"`,
+                    onData
+                );
+            } else {
+                this.broadcast(config.id, `#2 Updating to ${branch}...`, onData);
+                await runStreamedCommand(
+                    config.id,
+                    [
+                        git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
+                        git.cmd(`fetch origin`, appDir),
+                        git.cmd(`checkout -B ${branch}`, appDir),
+                        git.cmd(`reset --hard origin/${branch}`, appDir),
+                    ].join(' && '),
+                    onData
+                );
+            }
+
+            // Fix permissions immediately after git operations so pnpm can work
+            execSyncSudo(`chown -R zpanel:zpanel "${appDir}"`);
+
+            const appPort = await this.guessAppPort(config.id!, appDir)
+            this.broadcast(config.id, `⚡ Detected port ${pc.cyan(appPort)}`, onData);
+
+            // Update local config state
+            const latestSha = execSync(git.cmd(`rev-parse HEAD`, appDir)).toString().trim();
+            config.git!.branch = branch;
+            config.git!.commit = latestSha;
+            config.path = appDir;
+            config.port = appPort;
+            await this.saveConfig(config);
+
+            // Dependencies & Build
+            // Use --dir or --prefix instead of 'cd'
+            this.broadcast(config.id, "#3 Installing dependencies with pnpm...", onData);
+            await runStreamedCommand(
+                config.id, 
+                `sudo pnpm --dir "${appDir}" install`, 
+                onData);
+            
+            this.broadcast(config.id, "#4 Running build script...", onData);
+            await runStreamedCommand(
+                config.id, 
+                `sudo pnpm --dir "${appDir}" run build`, 
+                onData);
+
+            // 4. Systemd Sync
+            this.broadcast(config.id, "#5 Synchronizing Workers...", onData);
+
+
+            const pkgJsonPath = path.join(config.path, `package.json`)
+            const pkgJson = JSON.parse(fss.readFileSync(pkgJsonPath, `utf8`))
+            pkgJson.scripts['zpm:start'] = `zpm start dist/zapp --name ${config.worker}`
+            execSyncSudo(`bash -c 'echo "${JSON.stringify(pkgJson)}" > "${pkgJsonPath}"'`);
+            
+
+            await runStreamedCommand(
+                config.id, 
+                `sudo pnpm --dir "${appDir}" zpm:start`, 
+                onData);
+            
+
+            this.broadcast(config.id, `:: Deployment successful! Live on ${branch} (${latestSha.substring(0, 7)})`, onData);
+
+            
+        } catch (err: any) {
+            this.broadcast(config.id, `:: Deployment failed: ${err.message}`, onData, "error");
+        }
+            
     }
 
 

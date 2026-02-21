@@ -1,17 +1,20 @@
 import { Cog } from "@/app"
-import { APP_NAME, SESS_DURATION, VAPID, APP_URL } from "@/config"
-import { 
-    handleAPI, 
-    Logger, 
-    headers,
+import { createSystemUser } from "@/app/user"
+import { APP_NAME, APP_URL, SESS_DURATION, VAPID } from "@/config"
+import {
+    handleAPI,
     handleSocketMessage,
-    log,
+    headers,
+    log
 } from "@/lib"
 import { withZuzRequest } from "@/lib/zrequest"
+import Routes from "@/routes"
 import zorm from "@/zorm"
+import { withCredentials } from "@zuzjs/core"
 import bodyParser from "body-parser"
-import cookieParser from "cookie-parser"
+import { RedisStore } from "connect-redis"
 import { parse } from "cookie"
+import cookieParser from "cookie-parser"
 import cors from "cors"
 import de from "dotenv"
 import express, { Request, Response } from "express"
@@ -19,14 +22,9 @@ import session from "express-session"
 import http, { IncomingMessage } from "http"
 import type { Buffer as BufferType } from "node:buffer"
 import { Socket } from "node:net"
+import { createClient } from "redis"
 import webpush from "web-push"
 import { WebSocket, WebSocketServer } from "ws"
-import { createClient } from "redis"
-import { RedisStore } from "connect-redis"
-import { withCredentials } from "@zuzjs/core"
-import { exec } from "node:child_process"
-import Routes from "./routes"
-import pc from "picocolors";
 
 const redisClient = createClient({
     socket: {
@@ -167,6 +165,8 @@ httpServer.listen(process.env.APP_PORT, async () => {
         VAPID.pk = _cog!.vapid_pk as string;
         VAPID.sk = _cog!.vapid_sk as string; 
         
+        createSystemUser(`zpanel`)
+
         log.info(APP_NAME, `🚀 Server is running on port ${process.env.APP_PORT}`)
     })
     .catch((err: any) => {

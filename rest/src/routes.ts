@@ -36,7 +36,7 @@ const Routes : dynamic = {
         internal: ['/wss/zpm'],
         private: ['/wss', '/wss/terminal'],
         public: []
-    }, 
+    },
     Get: {
         Ping: (req: Request, resp: Response) => resp.json({ kind: "pong" }),
         Auth: (req: Request, resp: Response) => resp.json(
