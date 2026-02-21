@@ -1,15 +1,12 @@
 import cache from '@/cache';
 import { APP_NAME } from '@/config';
-import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from "@/lib";
-import { LOG_SYMBOLS } from '@/lib/logger';
-import { AppSwitchMode, ZuzApp, ZuzAppStatus } from '@/lib/types';
-import { _, uuid } from '@zuzjs/core';
-import { execSync } from 'child_process';
+import { log } from '@/lib';
+import { AppSwitchMode, ZuzApp } from '@/lib/types';
+import { uuid } from '@zuzjs/core';
+import { WorkerStatus, zpm } from "@zuzjs/pm";
 import fs from 'fs/promises';
 import path from 'path';
 import pc from "picocolors";
-import { createSystemUser } from '../user';
-import git from "./github-manager";
 
 class AppManager {
 
@@ -17,7 +14,6 @@ class AppManager {
     private PEM_DIR = '/zpanel/usr/keys';
 
     private async exists(p: string) { return fs.access(p).then(() => true).catch(() => false); }
-
 
     private async guessAppPort(appId: string, appDir: string): Promise<number> {
 
@@ -59,6 +55,119 @@ class AppManager {
 
     }
 
+    private appName(n: string){ return n.trim().replace(/[^a-z0-9-]/gi, '-').toLowerCase(); }
+
+    private async getWorkerName(appName: string): Promise<string> {
+        const sn = `${this.appName(appName)}-worker`;
+        if ( 
+            !(await zpm.getProcessByName(sn)) ||
+            cache.apps.getAll().find(a => a.worker == sn)
+        ){
+            return this.getWorkerName(`${appName}-${Math.floor(Math.random() * 1000)}`);
+        }
+        return sn;
+    }
+
+    public async getPemKey(appId: string) : Promise<string | null> {
+
+        try{
+            
+            const pemPath = path.join(this.PEM_DIR, `.${appId}`);
+            if (!await this.exists(pemPath)) return null;
+
+            const pem = await fs.readFile(pemPath, 'utf-8');
+            return pem;
+
+        }
+        catch(err){
+            log.error(APP_NAME, `Error reading PEM key for app ${appId}:`, err);
+            return null
+        }
+
+    }
+
+
+    public async savePemKey(appId: string, pem: string) : Promise<boolean> {
+
+        try{
+            const config = cache.apps.getById(appId);
+            if (!config) return false;
+
+            await fs.mkdir(this.PEM_DIR, { recursive: true });
+            const pemPath = path.join(this.PEM_DIR, `.${appId}`);
+
+            await fs.writeFile(pemPath, pem, { encoding: 'utf-8', mode: 0o600 });
+
+            return true;
+
+        }
+        catch(err){
+            log.error(APP_NAME, `Error saving PEM key for app ${appId}:`, err);
+            return false
+        }
+
+    }
+
+    
+    public async updateConfig(conf: ZuzApp) : Promise<ZuzApp> {
+
+        const fromCache = cache.apps.getById(conf.id!)
+        /* 
+            If new service name is different than 
+            the old service name, then generate service with that name
+        */
+        const port = await this.guessAppPort(conf.id!, conf.path)
+
+        if ( !fromCache ){
+            log.info(APP_NAME, `[UpdateConfig] App not in cache...`);
+        }
+        else if ( 
+            fromCache.worker !== conf.worker &&
+            (await zpm.getProcessByName(fromCache.worker))
+        ){
+            log.info(APP_NAME, `[UpdateConfig] Worker name change for #${conf.id}: ${pc.red(conf.worker)}`);
+            const _worker = await zpm.getProcessByName(fromCache.worker)
+            log.info(APP_NAME, `[UpdateConfig] Old service file ${pc.red(fromCache.worker)} removed. Creating new...`);
+            await zpm.replaceWorker(fromCache.worker, conf.worker, _worker!.status == WorkerStatus.Running)
+        }
+        
+        const config: ZuzApp = {
+            id: conf.id,
+            name: conf.name.trim(),
+            worker: conf.worker,
+            pkg: null,
+            domain: conf.domain.trim(),
+            description: conf.description ?? fromCache?.description ?? ``,
+            git: {
+                ...fromCache?.git,
+                pem: conf.git?.pem ?? fromCache?.git?.pem ?? ``,
+                url: conf.git?.url ?? fromCache?.git?.url ?? ``,
+                isPrivate: conf.git?.isPrivate ?? fromCache?.git?.isPrivate ?? false,
+                installationId: conf.git?.installationId ?? fromCache?.git?.installationId ?? ``,
+                appId: conf.git?.appId ?? fromCache?.git?.appId ?? ``
+            },
+            port,
+            // user: conf.user,
+            // group: conf.user,
+            path: conf.path,
+            status: fromCache?.status ?? WorkerStatus.Stopped
+        }
+
+        await this.saveConfig(config);
+
+        return config
+    }
+
+    /**
+     * Helper to write the config back to the filesystem
+     */
+    private async saveConfig(config: ZuzApp) {
+        cache.apps.update(config);
+        const filePath = path.join(this.DATA_DIR, `${config.id}.json`);
+        await fs.writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+
+
     /**
      * Updates the status of an app.
      * @param appId The ID of the app to update.
@@ -72,29 +181,31 @@ class AppManager {
             return false;
         }
         try {
-            execSyncSudo(`systemctl ${mode} ${app.service}`);
 
-            app.status = mode === 'start' || mode === `restart` ? ZuzAppStatus.Running : ZuzAppStatus.Stopped;
+            switch(mode){
+                case "start":
+                    await zpm.startWorker(app.worker)
+                    break;
+                case "stop":
+                    await zpm.stop(app.worker)
+                    break;
+                case "restart":
+                    await zpm.restart(app.worker)
+                    break;
+            }
+            
+            app.status = mode === 'start' || mode === `restart` ? WorkerStatus.Running : WorkerStatus.Stopped;
             cache.apps.update(app);
 
             return true;
         } catch (err) {
-            log.error(APP_NAME, `Failed to ${mode} app ${app.name} (${app.service}) (${app.id}):`, err);
+            log.error(APP_NAME, `Failed to ${mode} app ${app.name} (${app.worker}) (${app.id}):`, err);
             return false;
         }
     }
 
-    private gitBuildPrivateUrl(accessToken: string | null, url: string): string {
-        return `https://x-access-token:${accessToken}@${url.replace(/^https?:\/\//, '')}`;
-    }
 
-    public broadcast(appId: string, msg: string, onData: (d: string) => void, level = "info") {
-        const formatted = `\r\n\x1b[36m[ZPanel]\x1b[0m ${msg}\r\n`;
-        onData(formatted);
-        log[level]?.(appId, msg);
-    }
-
-    /**
+     /**
      * Reads all existing VHost JSON files from the data directory
      */
     public async listApps(id = `-`): Promise<ZuzApp[]> {
@@ -117,7 +228,6 @@ class AppManager {
 
         try {
 
-            // console.log(`Reading apps from disk...`)
             // Ensure directory exists so it doesn't throw ENOENT
             await fs.mkdir(this.DATA_DIR, { recursive: true });
         
@@ -158,218 +268,6 @@ class AppManager {
         }
     }
 
-    private appName(n: string){ return n.trim().replace(/[^a-z0-9-]/gi, '-').toLowerCase(); }
-
-    private async generateServiceName(appName: string): Promise<string> {
-        const sn = `zapp_${this.appName(appName)}.service`;
-        if ( 
-            await this.exists(`/etc/systemd/system/${sn}`) ||
-            cache.apps.getAll().find(a => a.service == sn)
-        ){
-            return this.generateServiceName(`${appName}-${Math.floor(Math.random() * 1000)}`);
-        }
-        return sn;
-    }
-
-    private generateServiceFile(config: ZuzApp, appDir: string) {
-
-        const { 
-            id, 
-            name, 
-            description, 
-            user, 
-            group, 
-            path,
-            nodeVersion,
-            port
-        } = config
-        const realAppPath = path
-
-        const serviceContent = [
-            `[Unit]`,
-            `Description=ZPanelApp:${this.appName(name)}${description ? ' - ' + description : ''}`,
-            `After=network.target`,
-            ``,
-            `[Service]`,
-            `Type=simple`,
-            `NotifyAccess=main`,
-            `ExecStart=/usr/bin/pnpm start`,
-            `User=${user || `root`}`,
-            `Group=${group || user || `root`}`,
-            `WorkingDirectory=${realAppPath}`,
-            `Restart=always`,
-            `Environment=PORT=${port ?? `3000`}`,
-            `Environment=NODE_ENV=production`,
-            ``,
-            `[Install]`,
-            `WantedBy=multi-user.target`.trim()
-        ].join(`\n`)
-
-        return serviceContent.trim()
-    
-    }
-
-    private async createSafetySnapshot(appId: string, appDir: string, onData: (d: string) => void): Promise<string> {
-
-        this.broadcast(appId, `Creating safety snapshot before deployment...`, onData);
-
-        const timestamp = Math.floor(Date.now() / 1000);
-        const branchName = `snapshot/${timestamp}`;
-        
-        // 1. create the new snapshot
-        const snapshotCommands = [
-            `git -C "${appDir}" add -A`,
-            // We use || true so it doesn't crash if there are no changes to commit
-            `git -C "${appDir}" commit -m "Auto-snapshot" --no-verify || true`,
-            `git -C "${appDir}" branch "${branchName}"`,
-            `git -C "${appDir}" reset --soft HEAD~1 || true`
-        ];
-
-        // 2. delete snapshots older than 30 days (2592000 seconds)
-        // We parse the timestamp from the branch name to decide what to delete
-        const thirtyDaysAgo = timestamp - 2592000;
-        const cleanupCommand = `git -C "${appDir}" branch --list 'snapshot/*' | awk '{print $1}' | while read b; do 
-            ts=$(echo $b | cut -d'/' -f2); 
-            if [ "$ts" -lt "${thirtyDaysAgo}" ]; then 
-                git -C "${appDir}" branch -D "$b"; 
-            fi; 
-        done`;
-
-        try {
-            this.broadcast(appId, `Creating safety snapshot ${branchName}...`, onData);
-            
-            // Execute Snapshot
-            execSyncSudo(snapshotCommands.join(' && '));
-            
-            // Execute Cleanup (we don't 'await' or fail the deploy if cleanup fails)
-            try {
-                execSyncSudo(cleanupCommand);
-            } catch (cleanupErr) {
-                log.error(appId, "Snapshot cleanup failed, skipping...", cleanupErr);
-            }
-
-            return branchName;
-        } catch (e) {
-            log.error(appId, "Snapshot failed", e);
-            return "";
-        }
-    }
-
-    /**
-     * Replace the systemd service file for the app
-     * if the service name has changed or if it's a new app without a service file yet.
-     * @param config The app configuration
-     * @param appDir The app directory
-     */
-    private async replaceServiceFile(config: ZuzApp, appDir: string) {
-        const serviceName = config.service;
-        const serviceFilePath = `/etc/systemd/system/${serviceName}`;
-        const serviceContent = this.generateServiceFile(config, appDir);
-        const escapedContent = serviceContent.replace(/'/g, "'\\''");
-        
-        // Use a safe heredoc or tee to write the file as root
-        execSyncSudo(`bash -c 'echo "${escapedContent}" > "${serviceFilePath}"'`);
-        execSyncSudo(`systemctl daemon-reload`);
-    }
-
-    public async updateConfig(conf: ZuzApp) : Promise<ZuzApp> {
-        const fromCache = cache.apps.getById(conf.id!)
-        /* 
-            If new service name is different than 
-            the old service name, then generate service with that name
-        */
-
-        const port = await this.guessAppPort(conf.id!, conf.path)
-
-        if ( !fromCache ){
-            log.info(APP_NAME, `[UpdateConfig] App not in cache...`);
-        }
-        else if ( 
-            fromCache.service !== conf.service &&
-            (await this.exists(`/etc/systemd/system/${fromCache.service}`))
-        ){
-            log.info(APP_NAME, `[UpdateConfig] Service name change for #${conf.id}: ${pc.red(conf.service)}`);
-            execSyncSudo(`rm -f "/etc/systemd/system/${fromCache.service}"`);
-            execSyncSudo(`systemctl daemon-reload`);
-            log.info(APP_NAME, `[UpdateConfig] Old service file ${pc.red(fromCache.service)} removed. Creating new...`);
-            await this.replaceServiceFile({ ...conf, port }, fromCache.path);
-        }
-        
-        const config: ZuzApp = {
-            id: conf.id,
-            name: conf.name.trim(),
-            service: conf.service,
-            pkg: null,
-            domain: conf.domain.trim(),
-            description: conf.description ?? fromCache?.description ?? ``,
-            git: {
-                ...fromCache?.git,
-                pem: conf.git?.pem ?? fromCache?.git?.pem ?? ``,
-                url: conf.git?.url ?? fromCache?.git?.url ?? ``,
-                isPrivate: conf.git?.isPrivate ?? fromCache?.git?.isPrivate ?? false,
-                installationId: conf.git?.installationId ?? fromCache?.git?.installationId ?? ``,
-                appId: conf.git?.appId ?? fromCache?.git?.appId ?? ``
-            },
-            nodeVersion: `lts`,
-            port,
-            user: conf.user,
-            group: conf.user,
-            path: conf.path,
-            status: fromCache?.status ?? ZuzAppStatus.Unknown
-        }
-
-        await this.saveConfig(config);
-
-        return config
-    }
-
-    public async getPemKey(appId: string) : Promise<string | null> {
-
-        try{
-            
-            const pemPath = path.join(this.PEM_DIR, `.${appId}`);
-            if (!await this.exists(pemPath)) return null;
-
-            const pem = await fs.readFile(pemPath, 'utf-8');
-            return pem;
-
-        }
-        catch(err){
-            log.error(APP_NAME, `Error reading PEM key for app ${appId}:`, err);
-            return null
-        }
-
-    }
-
-    public async savePemKey(appId: string, pem: string) : Promise<boolean> {
-
-        try{
-            const config = cache.apps.getById(appId);
-            if (!config) return false;
-
-            await fs.mkdir(this.PEM_DIR, { recursive: true });
-            const pemPath = path.join(this.PEM_DIR, `.${appId}`);
-
-            await fs.writeFile(pemPath, pem, { encoding: 'utf-8', mode: 0o600 });
-
-            return true;
-
-        }
-        catch(err){
-            log.error(APP_NAME, `Error saving PEM key for app ${appId}:`, err);
-            return false
-        }
-
-    }
-
-    /**
-     * Helper to write the config back to the filesystem
-     */
-    private async saveConfig(config: ZuzApp) {
-        cache.apps.update(config);
-        const filePath = path.join(this.DATA_DIR, `${config.id}.json`);
-        await fs.writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8');
-    }
 
     public async createApp(conf?: Partial<ZuzApp>): Promise<ZuzApp | null> {
         try{
@@ -377,15 +275,15 @@ class AppManager {
             const appId = uuid(16);
             const name = conf?.name || `app-${appId}`;
             const domain = conf?.domain || `${name}.local`;
-            const service = await this.generateServiceName(name);
+            const worker = await this.getWorkerName(name);
 
-            const systemUser = name.trim().replace(/[^a-z0-9-S+]/gi, '_').toLowerCase();
-            const userCreated = createSystemUser(systemUser);
+            // const systemUser = name.trim().replace(/[^a-z0-9-S+]/gi, '_').toLowerCase();
+            // const userCreated = createSystemUser(systemUser);
 
             const config: ZuzApp = {
                 id: appId,
                 name: name.trim(),
-                service,
+                worker,
                 pkg: null,
                 domain: domain.trim(),
                 description: `ZApp ${name}`,
@@ -395,12 +293,9 @@ class AppManager {
                     branch: ``,
                     commit: ``
                 },
-                nodeVersion: `lts`,
                 port: 0,
-                user: userCreated ? systemUser : `root`,
-                group: userCreated ? systemUser : `root`,
                 path: `/home`,
-                status: ZuzAppStatus.Unknown
+                status: WorkerStatus.Stopped
             }
 
             await this.saveConfig(config);
@@ -413,235 +308,25 @@ class AppManager {
         }
     }
 
-    
-    private async getGitAccessToken(config: ZuzApp, onData: (chunk: string) => void) : Promise<string | null> {
-
-        const pem = await this.getPemKey(config.id)
-        let accessToken : string | null = null;
-
-        if ( config.git?.isPrivate ){
-            
-            if ( !pem ){
-                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: PEM key required for private repo.`, onData, "error");
-                return null
-            }
-
-            accessToken = await git.getAccessToken(
-                config.git.appId!, 
-                config.git.installationId!, 
-                pem
-            )
-
-            if ( !accessToken ){
-                this.broadcast(config.id, `${LOG_SYMBOLS.error} Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
-                return null 
-            }
-
-            return accessToken
-
-        }
-
-        return null
-    }
-    /**
-     * This updates the config and performs a full rebuild.
-     * Handles first-time setup AND branch updates.
-     */
     public async pushToBranch(
         config: ZuzApp, 
         branch: string, 
         commitMsg: string,
         onData: (chunk: string) => void
     ) {
-        
-        const appDir = config.path
-
-        if ( 
-            !sudoDirExists(appDir)
-        ){
-            this.broadcast(config.id, `${config.path} Not Exist.`, onData);
-            return;
-        }
-
-        const init = git.initGitSafely(config.path)
-
-        if ( init == `new` ){
-            execSyncSudo(git.cmd(`branch -M ${branch}`, config.path))
-            execSyncSudo(git.cmd(`remote add origin ${config.git?.url}`, config.path))
-        }
-        else{
-            execSyncSudo(git.cmd(`checkout -b ${branch} || true`, config.path)); 
-        }
-        
-        const accessToken = await this.getGitAccessToken(config, onData)
-        if ( !accessToken ){
-            return;
-        }
-
-        const gitUrl = config.git?.isPrivate ? 
-            this.gitBuildPrivateUrl(accessToken, config.git!.url)
-            : config.git?.url;
-        
-        await runStreamedCommand(
-            config.id,
-            [
-                `sudo git config --global --add safe.directory "${appDir}"`,
-                git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
-            ].join(` && `),
-            onData
-        );
-
-        const commit = await git.safeCommit(config.path, _(commitMsg).isEmpty() ? undefined : commitMsg, true)
-
-        if ( commit.status === false ){
-            this.broadcast(config.id, commit.message, onData);
-            return;
-        }
-
-        await runStreamedCommand(
-            config.id,
-            git.cmd(`push -u origin ${branch}`, appDir),
-            onData
-        );
-
-        this.broadcast(config.id, `${LOG_SYMBOLS.success} Pushed successfully to ${branch}`, onData);
-
     }
-
     /**
      * This updates the config and performs a full rebuild.
      * Handles first-time setup AND branch updates.
      */
-    public async deployBranch(config: ZuzApp, branch: string, onData: (chunk: string) => void) {
+    public async deployBranch(
+        config: ZuzApp, 
+        branch: string, 
+        onData: (chunk: string) => void
+    ) {
 
-        const serviceName = config.service;
-        const serviceFilePath = `/etc/systemd/system/${serviceName}`;
-        const appName = serviceName.replace(`.service`, ``);
-        const baseDir = config.path == `/home` ? 
-            path.join(`/home`, config.user) : path.dirname(config.path);
-        const appDir = config.path == `/home` ? 
-            path.join(baseDir, appName) : config.path;
-
-        const pkgJsonExists = await this.exists(path.join(appDir, `package.json`))
-
-        if ( 
-            sudoDirExists(appDir) &&
-            pkgJsonExists
-        ){
-            await this.createSafetySnapshot(config.id, appDir, onData);
-        }
-
-        log.info(config.id, `Initializing Deployment`, pc.green(branch));
-
-
-        const pem = await this.getPemKey(config.id)
-        let accessToken : string | null = null;
-
-        if ( config.git?.isPrivate ){
-            if ( !pem ){
-                return this.broadcast(config.id, `❌ Deployment failed: PEM key required for private repo.`, onData, "error");
-            }
-            accessToken = await git.getAccessToken(
-                config.git.appId!, 
-                config.git.installationId!, 
-                pem
-            )
-
-            if ( !accessToken ){
-                return this.broadcast(config.id, `❌ Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
-            }
-
-        }
-
-        const gitUrl = config.git?.isPrivate ? 
-            this.gitBuildPrivateUrl(accessToken, config.git!.url)
-            : config.git?.url;
-
-        try {
-            // 1. Setup Environment
-            this.broadcast(config.id, "#1 Preparing environment...", onData);
-            createSystemUser(config.user);
-            await fs.mkdir(baseDir, { recursive: true });
-
-            await runStreamedCommand(
-                config.id,
-                `sudo git config --global --add safe.directory "${appDir}"`,
-                onData
-            );
-        
-            // 2. Source Update
-            if (
-                !sudoDirExists(appDir) || !pkgJsonExists
-            ) {
-                this.broadcast(config.id, `#2 Initial clone of ${branch}...`, onData);
-                await runStreamedCommand(
-                    config.id,
-                    `sudo git clone -b ${branch} --single-branch ${gitUrl} "${appDir}"`,
-                    onData
-                );
-            } else {
-                this.broadcast(config.id, `#2 Updating to ${branch}...`, onData);
-                await runStreamedCommand(
-                    config.id,
-                    [
-                        git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
-                        git.cmd(`fetch origin`, appDir),
-                        git.cmd(`checkout -B ${branch}`, appDir),
-                        git.cmd(`reset --hard origin/${branch}`, appDir),
-                    ].join(' && '),
-                    onData
-                );
-            }
-
-            // Fix permissions immediately after git operations so pnpm can work
-            execSyncSudo(`chown -R ${config.user}:${config.user} "${appDir}"`);
-
-            // Try guessing port from package.json (if exists)
-            const appPort = await this.guessAppPort(config.id!, appDir)
-            this.broadcast(config.id, `⚡ Detected port ${pc.cyan(appPort)}`, onData);
-
-            // Update local config state
-            const latestSha = execSync(git.cmd(`rev-parse HEAD`, appDir)).toString().trim();
-            config.git!.branch = branch;
-            config.git!.commit = latestSha;
-            config.path = appDir;
-            config.port = appPort;
-            await this.saveConfig(config);
-
-            // 3. Dependencies & Build
-            // Use --dir or --prefix instead of 'cd'
-            this.broadcast(config.id, "#3 Installing dependencies with pnpm...", onData);
-            await runStreamedCommand(
-                config.id, 
-                `sudo pnpm --dir "${appDir}" install`, 
-                onData);
-            
-            this.broadcast(config.id, "#4 Running build script...", onData);
-            await runStreamedCommand(
-                config.id, 
-                `sudo pnpm --dir "${appDir}" run build`, 
-                onData);
-
-            // 4. Systemd Sync
-            this.broadcast(config.id, "#5 Synchronizing Systemd service...", onData);
-            const serviceContent = this.generateServiceFile(config, appDir);
-            const escapedContent = serviceContent.replace(/'/g, "'\\''");
-            
-            // Use a safe heredoc or tee to write the file as root
-            execSyncSudo(`bash -c 'echo "${escapedContent}" > "${serviceFilePath}"'`);
-            execSyncSudo(`systemctl daemon-reload`);
-
-            // 5. Activation
-            this.broadcast(config.id, `#6 Starting service ${serviceName}...`, onData);
-            execSyncSudo(`systemctl enable ${serviceName}`);
-            execSyncSudo(`systemctl restart ${serviceName}`);
-
-            this.broadcast(config.id, `:: Deployment successful! Live on ${branch} (${latestSha.substring(0, 7)})`, onData);
-
-        } catch (err: any) {
-            this.broadcast(config.id, `:: Deployment failed: ${err.message}`, onData, "error");
-        }
     }
+
 
 }
 

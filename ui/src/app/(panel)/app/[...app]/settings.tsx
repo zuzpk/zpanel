@@ -1,11 +1,11 @@
 "use client"
-import { Box, Button, Form, Input, Select, SPINNER, Spinner, Switch, Text, Textarea, useToast, Variant, SelectHandler } from '@zuzjs/ui';
 import { AppStore, Store } from "@/store";
-import createStore, { useStore } from "@zuzjs/store";
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useStore } from "@zuzjs/store";
+import { Box, Button, Form, Input, SelectHandler, SPINNER, Spinner, Switch, Text, Textarea, useToast } from '@zuzjs/ui';
 import { useParams } from 'next/navigation';
-import PageTitle from '../../page-title';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DirChooser from '../../filemanager/dir-chooser';
+import PageTitle from '../../page-title';
 
 const Settings : React.FC = (_props) => {
 
@@ -64,7 +64,7 @@ const Settings : React.FC = (_props) => {
 
                     <Text as={`s:14 bold mt:20`}>System User</Text>
                     <Text as={`s:12 mb:5 opacity:0.5`}>Choose a system user to assign to this app</Text>
-                    <Select 
+                    {/* <Select 
                         ref={userSelect}
                         name={`usr`}
                         as={`w:200!`}
@@ -82,7 +82,7 @@ const Settings : React.FC = (_props) => {
                             label: u.username,
                             value: u.username,
                             icon: `frame`
-                        }))} />
+                        }))} /> */}
                         
                     <Text as={`s:14 bold mt:30`}>Repository URL (Optional)</Text>
                     <Text as={`s:12 mb:5 opacity:0.5`}>Paste your github repo url</Text>

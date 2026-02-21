@@ -44,12 +44,13 @@ export type GitAction = `deploy` | `push` | `pull`
 export type AppSwitchMode = `start` | `stop` | `restart`
 
 export enum ZuzAppStatus {
-    Running = 'running',
-    Stopped = 'stopped',
-    Failed = 'failed',
-    Restarting = 'restarting',
-    Unknown = 'unknown',
-    Loading = "loading"
+  Stopped = "stopped",
+  Starting = "starting",
+  Running = "running",
+  Stopping = "stopping",
+  Crashed = "crashed",
+  Errored = "errored",
+  Loading = "loading"
 }
 
 export interface ZuzAppPackage {
@@ -59,26 +60,47 @@ export interface ZuzAppPackage {
     isNextJs: boolean
 }
 
+// export interface ZuzApp {
+//     id: string;
+//     name: string;
+//     service: string;
+//     pkg: ZuzAppPackage | null;
+//     domain: string;
+//     description?: string;
+//     git?: {
+//         url: string;
+//         isPrivate?: boolean;
+//         pem?: string;
+//         branch?: string;
+//         commit?: string;
+//         installationId?: string;
+//         appId?: string;
+//     },
+//     nodeVersion: string;
+//     port: number;
+//     user: string;
+//     group?: string;
+//     path: string;
+//     status: ZuzAppStatus;
+// }
+
 export interface ZuzApp {
     id: string;
     name: string;
-    service: string;
+    worker: string;
     pkg: ZuzAppPackage | null;
     domain: string;
     description?: string;
     git?: {
         url: string;
         isPrivate?: boolean;
-        pem?: string;
         branch?: string;
         commit?: string;
+        pem?: string;
         installationId?: string;
         appId?: string;
     },
-    nodeVersion: string;
     port: number;
-    user: string;
-    group?: string;
     path: string;
     status: ZuzAppStatus;
 }

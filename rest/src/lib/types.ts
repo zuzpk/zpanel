@@ -1,3 +1,4 @@
+import { WorkerStatus } from "@zuzjs/pm";
 import "express";
 
 declare global {
@@ -83,7 +84,7 @@ export interface ZuzAppPackage {
 export interface ZuzApp {
     id: string;
     name: string;
-    service: string;
+    worker: string;
     pkg: ZuzAppPackage | null;
     domain: string;
     description?: string;
@@ -96,12 +97,9 @@ export interface ZuzApp {
         installationId?: string;
         appId?: string;
     },
-    nodeVersion: string;
     port: number;
-    user: string;
-    group?: string;
     path: string;
-    status: ZuzAppStatus;
+    status: WorkerStatus;
 }
 
 export interface DirItem {

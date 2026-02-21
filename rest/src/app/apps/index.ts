@@ -1,8 +1,8 @@
 import cache from "@/cache";
 import { APP_NAME } from "@/config";
 import { log } from "@/lib";
-import { ZuzAppStatus } from "@/lib/types";
 import { _ } from "@zuzjs/core";
+import { WorkerStatus } from "@zuzjs/pm";
 import { Request, Response } from "express";
 import { getLinuxUsers } from "../user";
 import apm from "./app-manager";
@@ -70,7 +70,7 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     pem,
     installationId,
     gitAppId,
-    service,
+    worker,
     desc,
     root,
     branch,
@@ -95,7 +95,7 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     
     id: appId,
     name: name.trim(),
-    service,
+    worker,
     pkg: null,
     domain: domain.trim(),
     description: desc,
@@ -108,12 +108,11 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
         installationId: installationId ?? ``,
         appId: gitAppId ?? ``,
     },
-    nodeVersion: `lts`,
     port: 0,
-    user: usr,
-    group: usr,
+    // user: usr,
+    // group: usr,
     path: root,
-    status: ZuzAppStatus.Unknown, //Change this from cache
+    status: WorkerStatus.Stopped, //Change this from cache
             
   })
 
