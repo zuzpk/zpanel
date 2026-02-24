@@ -4,9 +4,8 @@ import { log } from "@/lib";
 import { _ } from "@zuzjs/core";
 import { WorkerStatus } from "@zuzjs/pm";
 import { Request, Response } from "express";
-import { getLinuxUsers } from "../user";
 import apm from "./app-manager";
-import github, { GitHubBranch } from "./github-manager";
+import github from "./git-manager";
 
 export const AppList = async (req: Request, resp: Response) => {
 
@@ -14,7 +13,7 @@ export const AppList = async (req: Request, resp: Response) => {
     .then(apps => resp.send({ 
       kind: `appList`, 
       apps,
-      users: getLinuxUsers() 
+    //   users: getLinuxUsers() 
     }))
     .catch(err => resp.send({ error: err.message || `Failed to list apps` }))
 
@@ -64,7 +63,6 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
     appId, 
     name, 
     domain,
-    usr,
     repo, 
     isprivate,
     pem,
@@ -184,175 +182,4 @@ export const ListGitBranches = async (req: Request, resp: Response) => {
       })
     }
 
-}
-
-export const ListGitCommits = async (req: Request, resp: Response) => {
-
-    const { appId } = req.body
-    const app = cache.apps.getById(appId)
-
-    if ( !app ){
-      return resp.send({
-        error: `appNotFound`,
-        message: `App not found or you don't have permission to access it.`
-      })
-    }
-    if ( _(app.git?.url ?? ``).isEmpty() ){
-      return resp.send({
-        error: `urlNotFound`,
-        message: `You have not added a valid github repo url. Goto settings to add it.`
-      })
-    }
-
-    try{
-
-      const commits = await github.getCommits(
-        app.git?.url!,
-        `main`
-      )
-
-      
-      return resp.send({
-        kind: `appCommits`,
-        commits
-      })
-    }
-    catch (e: any) {
-      log.error(APP_NAME, `ListGitCommitsError`, e)
-      return resp.send({
-        error: `commitsNotLoaded`,
-        message: `Commits are not loaded with error: ${e.message}`
-      })
-    }
-
-}
-
-export const DeployGitBranch = async (req: Request, resp: Response) => {
-
-  const { appId, branch } = req.body
-
-  const app = cache.apps.getById(appId)
-
-  if ( !app ){
-    return resp.send({
-      error: `appNotFound`,
-      message: `App not found or you don't have permission to access it.`
-    })
-  }
-
-  const b = branch as GitHubBranch
-
-  return apm.deployBranch(
-    app, 
-    b.name, 
-    str => log.info(appId, str)
-  )
-  .then(() => {
-    log.info(APP_NAME, `Branch deployed successfully`, { appId, branch: b.name })
-    return resp.send({
-        kind: `branchDeployed`,
-        message: `Target branch deployed`
-      })
-    })
-    .catch(() => {
-      log.error(APP_NAME, `DeployBranchError`, { appId, branch: b.name })
-      return resp.send({
-          error: `branchDeployFailed`,
-          message: `Failed to deploy target branch`
-        })
-  })
-
-}
-
-export const PushGitBranch = async (req: Request, resp: Response) => {
-
-  const { 
-    appId, 
-    //Commit message
-    cmsg = ``,
-    branch = `main`
-  } = req.body
-
-  const app = cache.apps.getById(appId)
-
-  if ( !app ){
-    return resp.send({
-      error: `appNotFound`,
-      message: `App not found or you don't have permission to access it.`
-    })
-  }
-
-  return apm.pushToBranch(
-    app, 
-    branch,
-    cmsg, 
-    str => log.info(appId, str)
-  )
-  .then(() => {
-    log.info(APP_NAME, `Pushed to ${branch} successfully`)
-    return resp.send({
-        kind: `branchPushed`,
-        message: `Pushed to ${branch} successfully`
-      })
-    })
-    .catch(() => {
-      log.error(APP_NAME, `PushBranchError`)
-      return resp.send({
-          error: `branchPushFailed`,
-          message: `Failed pushing to target branch`
-        })
-  })
-
-}
-
-export const ChangeAppMode = async (req: Request, resp: Response) => {
-  const { appId, mode } = req.body;
-  log.info(APP_NAME, "ChangeAppMode called", { appId, mode });
-  apm.UpdateAppStatus(appId, mode)
-    .then(() => {
-      log.info(APP_NAME, `App ${mode}ed successfully!`, { appId, mode });
-      return resp.send({
-        kind: `appModeChanged`,
-        message: `App ${mode}ed successfully!`
-      })
-    })
-    .catch(err => {
-      log.error(APP_NAME, `Failed to ${mode} app:`, { appId, mode, error: err });
-      return resp.send({
-        error: `appModeChangeFailed`,
-        message: `Failed to ${mode} app: ${err.message}`
-      })
-    })
-}
-
-/**
- * When a service is started/stopped/restarted, call this to refresh the app list.
- * /etc/systemd/system/zapp_*.service
- * Called from /zpanel/bin/zapp-notify.sh
- */
-export const AppServiceStatusSwitched = async (req: Request, resp: Response) => {
-  const { appId, service, status } = req.body;
-  log.info(APP_NAME, "AppServiceStatusSwitched called", { appId, service, status });
-  // if ( 
-  //   (service.startsWith(`zapp_`) || service.startsWith(`zpanel-`) ) &&
-  //   !service.includes(`@`)
-  // ){
-  //   let app : ZuzApp | null = cache.apps.getById(service)
-  //   if ( !app ){
-  //     app = await buildZuzApp(service);
-  //   }
-  //   const _status = ZuzAppStatus[_(status).ucfirst()._] ?? ZuzAppStatus.Unknown;
-  //   cache.apps.update({ ...app!, status: _status! });
-  //   console.log(`AppServiceStatusSwitched:`, appId, service, status);
-  // }
-  // else console.log(`Invalid appId received in AppServiceStatusSwitched:`, appId, service, status);
-}
-
-/**
- * When a service is started/stopped/restarted, call this to refresh the app list.
- * /etc/systemd/system/zapp_*.service
- * Called from /zpanel/bin/zapp-watcher.sh
- */
-export const AppServiceModified = async (req: Request, resp: Response) => {
-  log.error(APP_NAME, "AppServiceModified called", req.body);
 }

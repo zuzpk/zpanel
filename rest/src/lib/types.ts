@@ -1,27 +1,28 @@
 import { WorkerStatus } from "@zuzjs/pm";
 import "express";
+import "ws";
 
 declare global {
     namespace Express {
         interface Request {
             lang?: Record<string, string>;
-            user?: User | null,
-            sender?: string | null
         }
     }
 }
 
-declare module "express-session" {
-    interface SessionData {
-        loggedIn?: boolean;
-        sender?: string;
-        isRoot?: boolean;
-    }
+export interface UserSession {
+    loggedIn?: boolean;
+    sender?: string;
+    isRoot?: boolean;
 }
 
+declare module "express-session" {
+    interface SessionData extends UserSession {}
+}
 declare module "ws" {
     interface WebSocket {
         session?: any;
+        topics?: Set<string>;
     }
 }
 
@@ -36,6 +37,12 @@ export type UserCookies = {
     Fingerprint: string,
     Session: string,
 };
+
+export enum Events {
+    TLog = "tlog",
+    onPubSocket = "ON_PUB_SOCKET",
+    onUserSocket = "ON_USER_SOCKET",
+}
 
 export enum UserType {
     Guest = 0,
@@ -57,10 +64,6 @@ export type User = {
     email: string,
     cc: string | undefined,
     status: UserStatus
-}
-
-export enum Events {
-    TLog = "tlog"
 }
 
 export type AppSwitchMode = `start` | `stop` | `restart`
@@ -102,6 +105,31 @@ export interface ZuzApp {
     status: WorkerStatus;
 }
 
+export interface NginxServer {
+    isRunning: boolean,
+    version: string
+}
+
+export interface NginxServerBlock {
+    id: string;
+    domain: string;
+    root: string;
+    isActive: boolean;
+    sslEnabled: boolean;
+    sslCertPath?: string;
+    sslKeyPath?: string;
+    path: string;
+}
+
+export interface NginxStatus {
+    isRunning: boolean;
+    version?: string;
+    activeConnections?: number;
+    totalRequests?: number;
+    serverBlocks: NginxServerBlock[];
+}
+
+
 export interface DirItem {
     token: string,
     path: string,
@@ -132,29 +160,6 @@ export interface LinuxGroup {
   isSystemGroup: boolean; // GID < 1000 or in standard range
 }
 
-export interface NginxServer {
-    isRunning: boolean,
-    version: string
-}
-
-export interface NginxServerBlock {
-    id: string;
-    domain: string;
-    root: string;
-    isActive: boolean;
-    sslEnabled: boolean;
-    sslCertPath?: string;
-    sslKeyPath?: string;
-    path: string;
-}
-
-export interface NginxStatus {
-    isRunning: boolean;
-    version?: string;
-    activeConnections?: number;
-    totalRequests?: number;
-    serverBlocks: NginxServerBlock[];
-}
 
 export interface ICacheSection<T> {
   getAll: () => T[];

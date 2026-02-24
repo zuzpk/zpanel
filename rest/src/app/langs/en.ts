@@ -1,5 +1,4 @@
 import LangAccount from "./_account.js"
-import LangApps from "./_apps.js"
 
 const Lang = {
 
@@ -14,8 +13,7 @@ const Lang = {
     webPushWelcomeTitle: "Welcome aboard!",
     webPushWelcomeMessage: "You're all set! Get ready for real-time updates.",
 
-    ...LangAccount,
-    ...LangApps,
+    ...LangAccount
 
 }
 

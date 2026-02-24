@@ -1,9 +1,9 @@
 "use client"
-import { Box, Button, Text, TRANSITION_CURVES, TRANSITIONS, Variant, css, Cover, Icon, Badge } from '@zuzjs/ui';
+import { useDelayed } from '@zuzjs/hooks';
+import { Box, Button, Cover, css, Text, TRANSITION_CURVES, TRANSITIONS, Variant } from '@zuzjs/ui';
+import Link from 'next/link';
 import React, { useCallback } from 'react';
 import { ZuzApp, ZuzAppStatus } from '../../../types';
-import Link from 'next/link';
-import { useDelayed } from '@zuzjs/hooks';
 
 const AppItem : React.FC<{
     index: number,
@@ -15,15 +15,12 @@ const AppItem : React.FC<{
     const { 
         id, 
         name,
-        service, 
+        worker, 
         pkg,
         domain,
         description,
         git,
-        nodeVersion,
         port,
-        user,
-        group,
         path,
         status
     } = meta || {}
@@ -66,7 +63,7 @@ const AppItem : React.FC<{
                 {(name || pkg?.name || `App`).charAt(0).toUpperCase()}
             </Box>
             <Text as={`s:18 bold mb:5 text-wrap`}>{name || pkg?.name || `App`}</Text>
-            <Text as={`s:14 opacity:0.75 text-wrap`}>{service}</Text>
+            <Text as={`s:14 opacity:0.75 text-wrap`}>{worker}</Text>
             <Text as={`s:14 opacity:0.5 mt:5 text-wrap`}>{git?.url}</Text>
             <Text as={`s:14 opacity:0.5 text-wrap`}>{path}</Text>
             

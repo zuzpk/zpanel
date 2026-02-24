@@ -1,40 +1,11 @@
-import {
-    AppList,
-    AppServiceModified,
-    AppServiceStatusSwitched,
-    ChangeAppMode,
-    // CheckForUpdate,
-    CreateApp,
-    DeployGitBranch,
-    ListGitBranches,
-    ListGitCommits,
-    PushGitBranch,
-    UpdateAppSettings,
-} from "@/app/apps";
-import {
-    CreateEmptyFile,
-    CreateFolder,
-    ListFilesAndFolders
-} from "@/app/fm";
-import {
-    GetServerList,
-    LoadFileContent,
-    SaveVirtualHost
-} from "@/app/nginx";
-import {
-    SaveWebPushToken,
-    Signin,
-    Signout,
-    listLinuxGroups,
-    listLinuxUsers
-} from "@/app/user";
+import { AppList, CreateApp, ListGitBranches, UpdateAppSettings } from "@/app/apps";
+import { listLinuxGroups, listLinuxUsers, SaveWebPushToken, Signin, Signout } from "@/app/user";
 import { dynamic } from "@zuzjs/core";
 import { Request, Response } from "express";
 
 const Routes : dynamic = {
     WebSocket: {
-        internal: ['/wss/zpm'],
-        private: ['/wss', '/wss/terminal'],
+        private: ['/wss'],
         public: []
     },
     Get: {
@@ -53,11 +24,6 @@ const Routes : dynamic = {
                     error: `oauth` 
                 }
         ),
-        Test: async (req: Request, resp: Response) => {
-            return resp.json({
-                kind: `Ping`
-            })
-        }
     },
     Post: {
         A: {
@@ -66,14 +32,7 @@ const Routes : dynamic = {
                 Signout
             },
             Login: Signin,
-            PushOauth: SaveWebPushToken,
-        },
-        Fm: {
-            private: {
-                Ls: ListFilesAndFolders,
-                NewFile: CreateEmptyFile,
-                NewFolder: CreateFolder,
-            }
+            PushOauth: SaveWebPushToken
         },
         Users: {
             private: {
@@ -81,54 +40,27 @@ const Routes : dynamic = {
                 Groups: listLinuxGroups,
             }
         },
-
         Git: {
             private: {
-                Commits: ListGitCommits,
+                // Commits: ListGitCommits,
                 Branches: ListGitBranches,
-                Deploy: DeployGitBranch,
-                Push: PushGitBranch,
+                // Deploy: DeployGitBranch,
+                // Push: PushGitBranch,
             }
         },
-
         Apps: {
 
             private: {
 
                 List: AppList,
-                // CheckForUpdate,
                 Create: CreateApp,
                 UpdateAppSettings,
-                Switch: ChangeAppMode
-                // Start: UpdateAppStatus,
-                // Stop: UpdateAppStatus,
-                // Restart: UpdateAppStatus,
-                
-            },
 
-            //Can Be called from internal scripts
-            internal: {
-                /**
-                 * When a service is started/stopped/restarted, call this to refresh the app list.
-                 * /etc/systemd/system/zapp_*.service
-                 * Called from /zpanel/bin/zapp-notify.sh
-                 */
-                AppServiceStatusSwitched,
-                /**
-                 * When a service is started/stopped/restarted, call this to refresh the app list.
-                 * /etc/systemd/system/zapp_*.service
-                 * Called from /zpanel/bin/zapp-watcher.sh
-                 */
-                AppServiceModified,
             }
-        },
-        Nginx: {
-            private: {
-                Ls: GetServerList,
-                LoadFile: LoadFileContent,
-                SaveVirtualHost
-            }
+
         }
+
+
     }
 }
 

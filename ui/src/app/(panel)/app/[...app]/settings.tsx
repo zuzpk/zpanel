@@ -1,7 +1,7 @@
 "use client"
 import { AppStore, Store } from "@/store";
 import { useStore } from "@zuzjs/store";
-import { Box, Button, Form, Input, SelectHandler, SPINNER, Spinner, Switch, Text, Textarea, useToast } from '@zuzjs/ui';
+import { Box, Button, Form, Input, SPINNER, Spinner, Switch, Text, Textarea, useToast } from '@zuzjs/ui';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DirChooser from '../../filemanager/dir-chooser';
@@ -16,16 +16,16 @@ const Settings : React.FC = (_props) => {
     const [ privateRepo, setPrivateRepo ] = useState(false)
     const homeDir = useRef<HTMLInputElement>(null)
     const currentApp = useMemo(() => list.find(l => l.id == appId), [appId, loading, list])
-    const userSelect = useRef<SelectHandler>(null)
+    // const userSelect = useRef<SelectHandler>(null)
 
     useEffect(() => {
         document.title = `Settings`
         if ( 
             users.length > 0 && 
-            currentApp &&
-            users.find(u => currentApp.user == u.username)
+            currentApp
+            // users.find(u => currentApp.user == u.username)
         ){
-            userSelect.current?.setSelected({ label: currentApp.user, value: currentApp.user })
+            // userSelect.current?.setSelected({ label: currentApp.user, value: currentApp.user })
             setPrivateRepo(currentApp.git?.isPrivate ?? false)
         }
     }, [users, currentApp])
@@ -62,9 +62,9 @@ const Settings : React.FC = (_props) => {
                         defaultValue={currentApp?.domain || ``}
                         placeholder={`www.example.com`} name={`domain`}  required />
 
-                    <Text as={`s:14 bold mt:20`}>System User</Text>
+                    {/* <Text as={`s:14 bold mt:20`}>System User</Text>
                     <Text as={`s:12 mb:5 opacity:0.5`}>Choose a system user to assign to this app</Text>
-                    {/* <Select 
+                    <Select
                         ref={userSelect}
                         name={`usr`}
                         as={`w:200!`}
@@ -127,11 +127,11 @@ const Settings : React.FC = (_props) => {
 
                     </>}
 
-                    <Text as={`s:14 bold mt:20`}>Service Name (Optional)</Text>
+                    <Text as={`s:14 bold mt:20`}>Worker Name (Optional)</Text>
                     <Text as={`s:12 mb:5 opacity:0.5`}>Will be auto generated based on your app name if not provided</Text>
                     <Input 
-                        defaultValue={currentApp?.service || ``}
-                        placeholder={`Service Name`} name={`service`}  />
+                        defaultValue={currentApp?.worker || ``}
+                        placeholder={`Service Name`} name={`worker`}  />
                     
                     <Text as={`s:14 bold mt:20`}>Description (Optional)</Text>
                     <Text as={`s:12 mb:5 opacity:0.5`}>A line about what your app is all about</Text>

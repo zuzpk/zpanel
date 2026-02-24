@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Define the port
-PORT=2082
+PORT=3001
 
 /usr/sbin/fuser -k $PORT/tcp
 
 PNPM_PATH="/usr/bin/pnpm"
 
-cd /home/binance-bapu
+cd /home
 
 echo "Starting server on port $PORT"
 

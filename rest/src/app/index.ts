@@ -24,6 +24,7 @@ export async function Cog(okey: string | string[], defaultValue?: boolean | stri
     let query = zorm.find(Settings)
     if ( _(okey).isArray() ){
         (okey as string[]).forEach((ok, i) => {
+            // console.log(`-`, ok)
             if ( i == 0 )
                 query.where({ okey: ok })
             else
@@ -42,20 +43,31 @@ export async function Cog(okey: string | string[], defaultValue?: boolean | stri
     if ( get.hasRows ){
         if ( get.rows && get.rows.length > 1 ){
             const vals : dynamic = {}
-            get.rows.forEach((r) => {
+            get.rows.forEach((r: any) => {
                 vals[r.okey] = _value(r.value)
             })
             return vals
         }
         else return _value(get.row.value)
     }
-    else if ( typeof okey === `string` && defaultValue && !_(okey).isArray() ){
-        await zorm.create(Settings).with({
-            okey,
-            value: `boolean` === typeof defaultValue ? String(defaultValue == true ? 1 : 0) : String(defaultValue)
-        })
-        return defaultValue
+    else if ( defaultValue !== undefined ){
+        if ( _(okey).isArray() && _(defaultValue).isArray() ){
+            (okey as string[]).map((ok, i) => {
+                const _defaultValue = (defaultValue as any[])[i]
+                zorm.create(Settings).with({
+                    okey: ok,
+                    value: `boolean` === typeof _defaultValue ? String(_defaultValue == true ? 1 : 0) : String(_defaultValue)
+                }).then(() => {})
+            })
+        }
+        else if ( typeof okey === `string` ){
+            await zorm.create(Settings).with({
+                okey,
+                value: `boolean` === typeof defaultValue ? String(defaultValue == true ? 1 : 0) : String(defaultValue)
+            })
+        }
     }
+    return defaultValue
 }
 
 export const uploader = multer({ storage })

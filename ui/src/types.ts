@@ -50,6 +50,7 @@ export enum ZuzAppStatus {
   Stopping = "stopping",
   Crashed = "crashed",
   Errored = "errored",
+  Unknown = "unknown",
   Loading = "loading"
 }
 

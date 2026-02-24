@@ -1,6 +1,6 @@
 import { RemoveWebPushToken } from "@/app/user";
-import { API_KEY, APP_URL, APP_VERSION, VAPID } from "@/config";
-import { Logger, withZuzAuth } from "@/lib";
+import { API_KEY, APP_NAME, APP_URL, APP_VERSION, VAPID } from "@/config";
+import { log, withZuzAuth } from "@/lib";
 import Routes from "@/routes";
 import { _, dynamic } from "@zuzjs/core";
 import { execSync } from "child_process";
@@ -8,9 +8,7 @@ import crypto from 'crypto';
 import { Request, Response } from "express";
 import Hashids from "hashids";
 import nodemailer from 'nodemailer';
-import path from "path";
 import webpush from "web-push";
-
 const encryptionAlgo = 'aes-256-cbc';
 
 const hashids = new Hashids(process.env.ENCRYPTION_KEY, +process.env.HASHIDS_LENGTH!)
@@ -65,7 +63,7 @@ export const Decode = (value: string, key?: string): string => {
         decrypted += decipher.final('utf8');
         return decrypted;
     }catch(err : any){
-        Logger.error(`[DecodeFailed]`, value, key || `APP_KEY`, err)
+        log.error(APP_NAME, `[DecodeFailed]`, value, key || `APP_KEY`, err)
         return ``
     }
 }
@@ -90,11 +88,9 @@ export const headers = (req: Request, keys?: string[]) : dynamic => {
 
 export const handleAPI = (requestMethod: "Post" | "Get", req: Request, resp: Response) => {
 
-    const [ key, method, action, ...rest ] = req.url.split(`/`).filter(Boolean)
+    const [ oPath ] = req.url.split(`?`)
+    const [ key, method, action, ...rest ] = oPath!.split(`/`).filter(Boolean)
     
-    const _404 = path.join(__dirname, '..', '..', 'public', '404.html')
-    // console.log(key, method, action, rest)
-
     if ( key == API_KEY && method ){
         try{
             
@@ -102,36 +98,10 @@ export const handleAPI = (requestMethod: "Post" | "Get", req: Request, resp: Res
             const METHOD = _(method).camelCase().ucfirst()._
             const ACTION = action ? _(action).camelCase().ucfirst()._ : null
             
-            // console.log(
-            //     requestMethod, 
-            //     METHOD, 
-            //     ACTION,
-            //     (
-            //         ACTION &&
-            //         _(apiRoutes[METHOD]).isObject() && 
-            //         apiRoutes[METHOD].private &&
-            //         ACTION in apiRoutes[METHOD].private
-            //     ),
-            //     apiRoutes, 
-            // )
-
             if ( METHOD in apiRoutes ){
 
                 if ( _(apiRoutes[METHOD]).isFunction() ){
                     return apiRoutes[METHOD](req, resp)    
-                }
-                
-                /**
-                 * Called from internal only
-                 */
-                else if( 
-                    ACTION &&
-                    _(apiRoutes[METHOD]).isObject() && 
-                    apiRoutes[METHOD].internal &&
-                    ACTION in apiRoutes[METHOD].internal
-                ){
-                    console.log(`[InternalAPIRequest]`, METHOD, ACTION)
-                    return apiRoutes[METHOD].internal[ACTION](req, resp)
                 }
                 
                 else if( 
@@ -163,15 +133,18 @@ export const handleAPI = (requestMethod: "Post" | "Get", req: Request, resp: Res
             })
 
         }catch(e){
-
-            return resp.status(403).sendFile(_404);
+            return resp.status(403).send({
+                error: `403`,
+                message: req.lang!.youAreLost
+            })
 
         }
     }
 
-
-    return resp.status(403).sendFile(_404);
-
+    return resp.status(404).send({
+        error: `404`,
+        message: req.lang!.youAreLost
+    })
 }
 
 export const sendPush = async (
@@ -197,40 +170,45 @@ export const sendPush = async (
 
     const { title, message, icon, badge, url, tag, silent, requireInteraction } = meta
 
-    webpush.setVapidDetails(
-        url || APP_URL,
-        VAPID.pk!,
-        VAPID.sk!,
-    );
+    try{
+        webpush.setVapidDetails(
+            url || APP_URL,
+            VAPID.pk!,
+            VAPID.sk!,
+        );
 
-    webpush.sendNotification(
-        {
-            endpoint: token.endpoint,
-            keys: token.keys
-        },
-        JSON.stringify({
-            title,
-            body: message,
-            icon: icon || "/static/icons/welcome-192.png",
-            badge: icon || "/static/icons/badge-72.png",
-            data: { url: url || `/` },           // opens homepage when clicked
-            tag: tag || `ZAPP_${APP_VERSION}`,
-            silent: silent || false,
-            requireInteraction: requireInteraction || false,
-        }),
-        {
-            TTL: 60 * 15,
-        }
-    )
-    .then((resp: any) => {
-        // console.log(`WebPushSendSent`, resp)
-    })
-    .catch(async (err) => {
-        console.error(`[WebPushSendFailed] ${err}`)
-        if ( err.statusCode && err.statusCode == 410 ){
-            RemoveWebPushToken(err.endpoint)
-        }
-    });
+        webpush.sendNotification(
+            {
+                endpoint: token.endpoint,
+                keys: token.keys
+            },
+            JSON.stringify({
+                title,
+                body: message,
+                icon: icon || "/static/icons/welcome-192.png",
+                badge: icon || "/static/icons/badge-72.png",
+                data: { url: url || `/` },           // opens homepage when clicked
+                tag: tag || `ZAPP_${APP_VERSION}`,
+                silent: silent || false,
+                requireInteraction: requireInteraction || false,
+            }),
+            {
+                TTL: 60 * 15,
+            }
+        )
+        .then((resp: any) => {
+            // console.log(`WebPushSendSent`, resp)
+        })
+        .catch(async (err: any) => {
+            log.error(APP_NAME, `sendPushError:2`, err)
+            if ( err.statusCode && err.statusCode == 410 ){
+                RemoveWebPushToken(err.endpoint)
+            }
+        });
+    }
+    catch(err){
+        log.error(APP_NAME, `sendPushError:2`, err)
+    }
 }
 
 export const sendMail = (from : string, to : string, subject : string, message : string) => {
@@ -264,6 +242,7 @@ export const sendMail = (from : string, to : string, subject : string, message :
     })
 
 }
+
 
 export const isGitHubUrl = (url: string) : {
     valid: boolean,

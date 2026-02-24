@@ -4,16 +4,13 @@
   "private": true,
   "scripts": {
     "css-fix": "sudo npm i -g style-loader css-loader sass-loader",
-    
     "dev": "concurrently \"zuzjs watch\" \"node zuz.js mode=dev dir=.next.dev\" \"next dev -p 2083 --webpack\"",
     "build": "node zuz.js mode=prod dir=.next.build && next build --webpack",
     "start": "next start -p 2083",
-
     "setup:next": "node zuz.js mode=dev dir=.next.dev",
     "zpm:watcher": "zpm start /usr/bin/node --name zpanel-zuzjs-ui-watcher --args \"node_modules/.bin/zuzjs watch\" --dev",
     "zpm:app": "zpm start ./node_modules/.bin/next --name zpanel-frontend --args \"dev -p 2083 --webpack\" --dev",
     "zdev": "npm run setup:next && npm run zpm:watcher && npm run zpm:app"
-    
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -21,7 +18,7 @@
     "@zuzjs/core": "^0.3.4",
     "@zuzjs/hooks": "^0.1.5",
     "@zuzjs/store": "^0.1.6",
-    "@zuzjs/ui": "^1.0.27",
+    "@zuzjs/ui": "^1.0.35",
     "js-cookie": "^3.0.5",
     "next": "16.1.6",
     "react": "^19.2.3",

@@ -6,6 +6,7 @@ export * from "./core";
 export { echo, log, Logger, logHistory, withAccessLogger, type LogEntry } from "./logger";
 export { handleSocketMessage } from "./socket";
 export { withZuzAuth } from "./zauth";
+export { withZuzRequest } from "./zrequest";
 
 /**
  * Checks if a directory exists using sudo

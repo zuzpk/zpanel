@@ -1,62 +1,40 @@
 import { Cog } from "@/app"
-import { createSystemUser } from "@/app/user"
-import { APP_NAME, APP_URL, SESS_DURATION, VAPID } from "@/config"
+import { APP_NAME, APP_URL, SESS_DURATION, SESS_NAME, VAPID } from "@/config"
 import {
     handleAPI,
-    handleSocketMessage,
-    headers,
     log
 } from "@/lib"
+import { initClients, redisClient, redisStore, wss } from "@/lib/clients"
+import { oauthWebsocket } from "@/lib/middleware"
+import { initSocketHub } from "@/lib/socket"
 import { withZuzRequest } from "@/lib/zrequest"
 import Routes from "@/routes"
 import zorm from "@/zorm"
 import { withCredentials } from "@zuzjs/core"
 import bodyParser from "body-parser"
-import { RedisStore } from "connect-redis"
-import { parse } from "cookie"
 import cookieParser from "cookie-parser"
 import cors from "cors"
 import de from "dotenv"
 import express, { Request, Response } from "express"
 import session from "express-session"
-import http, { IncomingMessage } from "http"
-import type { Buffer as BufferType } from "node:buffer"
-import { Socket } from "node:net"
-import { createClient } from "redis"
+import http from "http"
+import path from "path"
+import pc from "picocolors"
 import webpush from "web-push"
-import { WebSocket, WebSocketServer } from "ws"
-
-const redisClient = createClient({
-    socket: {
-        connectTimeout: 5000,
-        reconnectStrategy: (retries: number) => {
-            if (retries > 10) return new Error("Redis connection failed");
-            return Math.min(retries * 100, 3000);
-        }
-    }
-});
-redisClient.on('error', (err: any) => log.error(APP_NAME, 'Redis Client Error', err));
-redisClient.connect().catch((err: any) => log.error(APP_NAME, 'Redis Connection Error', err));
-const redisStore = new RedisStore({
-  client: redisClient,
-  prefix: `zapp:`,
-  disableTouch: false
-})
 
 de.config()
-
 withCredentials(true)
 
-/** Parse APP_URL to get Host for session store */
+const app = express();
+const server = http.createServer(app);
 const { hostname } = new URL(APP_URL);
 
-const app = express();
 app.set('trust proxy', 1);
 app.disable(`x-powered-by`);
 app.use(
     cors({
         origin: (origin, callback) => {
-            // In production, you might want to validate against a whitelist
+            // In production, we might want to validate against a whitelist
             // For now, allow the specific requesting origin to support credentials
             callback(null, origin || true); 
         },
@@ -69,7 +47,7 @@ app.use(
     bodyParser.urlencoded({ extended: true }),
     session({
         secret: process.env.ENCRYPTION_KEY!,
-        name: `${APP_NAME.toLowerCase()}.sid`,
+        name: SESS_NAME,
         resave: false,
         saveUninitialized: false,
         store: redisStore,
@@ -81,117 +59,93 @@ app.use(
             domain: hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)
                 ? undefined
                 : hostname
+
                 // Use this if you want wildcard like *.domain.com
                 // `.${hostname.split('.').slice(-2).join('.')}`,
         }
     }),
-    // withZuzAuth,
-    // withAccessLogger,
     withZuzRequest
-)
- 
+);
+
+app.use('/public', express.static(path.join(process.cwd(), 'iconfonts_built')));
 app.get(`/*splat`, (req: Request, resp: Response) => handleAPI("Get", req, resp))
 app.post(`/*splat`, (req: Request, resp: Response) => handleAPI("Post", req, resp))
 
-const httpServer = http.createServer(app)
-export const wss = new WebSocketServer({ noServer: true })
+// HTTP Upgrade (WebSocket Handshake)
+server.on('upgrade', async (req, socket, head) => {
+    
+    const wsUri = new URL(req.url || '/', `http://${req.headers.host}`);
+    const isProtected = Routes.WebSocket.private.some((p: string) => wsUri.pathname.startsWith(p));
 
-httpServer.on(`upgrade`, async (req: IncomingMessage, socket: Socket, head: BufferType) => {
-    try{
+    try {
 
-        const wsUri = new URL(req.url || '/', `http://${req.headers.host}`);
-        // console.log(pc.yellow(`[WebSocketUpgradeAttempt]`), wsUri);
-        const isProtected = Routes.WebSocket.private.some((p: string) => wsUri.pathname.startsWith(p));
+        const session = await oauthWebsocket(wsUri, req.headers.cookie || '');
 
-        if (isProtected) {
-            try {
-                const cookies = parse(req.headers.cookie || '');
-                const sid = cookies[`${APP_NAME.toLowerCase()}.sid`];
-
-                if (!sid) throw new Error("No session found");
-
-                // Extract the actual session ID from the signed cookie string
-                const unsignedSid = sid.split('.')[0]?.replace('s:', '');
-                
-                // Look up session in Redis
-                redisStore.get(unsignedSid ?? `-`, (err: any, session: any) => {
-                    if (err || !session || !session.loggedIn) {
-                        log.error(APP_NAME, `Unauthorized WebSocket connection attempt to ${wsUri.pathname}`);
-                        socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
-                        return;
-                    }
-                    
-                    // Authorized! Pass session info to the connection
-                    wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
-                        ws.session = session; 
-                        wss.emit('connection', ws, req);
-                    });
-                });
-                return;
-            } catch (err) {
-                log.error(APP_NAME, `Unauthorized WebSocket connection attempt to ${wsUri.pathname}`);
-                socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
-                return;
-            }
+        if (isProtected && !session) {
+            log.error(APP_NAME, `Unauthorized WebSocket connection attempt to ${wsUri.pathname}`);
+            socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            return;
         }
-
-        wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
+        
+        wss.handleUpgrade(req, socket, head, (ws: any) => {
+            ws.session = session;
+            ws.topics = new Set();
+            ws.currentApp = wsUri.searchParams.get("id");
             wss.emit('connection', ws, req);
         });
+
+    } catch (err) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
     }
-    catch(err){
-        log.error(APP_NAME, `[HTTPRequestUpgradeErrored]`, err);
-        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
-    }
-})
+});
 
-wss.on(`connection`, (ws: WebSocket, req: Request) => {
-
-    const { origin, cfConnectingIp, cfIpcountry } = headers(req)
-    log.info(APP_NAME, `WebSocket connection established from`, `${origin} [${cfConnectingIp}]`)
-    
-    ws.on(`message`, async (ms: any) => handleSocketMessage(req, ms, ws, origin))
-    ws.on(`close`, () => {
-        log.info(APP_NAME, `[${cfIpcountry}:${cfConnectingIp}] Socket Client Disconnected`)
-    })
-
-})
-
-httpServer.listen(process.env.APP_PORT, async () => {
-
-    zorm.connect().then(async () => {
-        const vapidKeys = webpush.generateVAPIDKeys();
-        const _cog = await Cog([`vapid_pk`, `vapid_sk`], [vapidKeys.publicKey, vapidKeys.privateKey])
-        VAPID.pk = _cog!.vapid_pk as string;
-        VAPID.sk = _cog!.vapid_sk as string; 
-        
-        createSystemUser(`zpanel`)
-
-        log.info(APP_NAME, `🚀 Server is running on port ${process.env.APP_PORT}`)
-    })
-    .catch((err: any) => {
-        console.error(`[ZormConnectionFailed]`, err)
-    })
-
-})
-
-const gracefulShutdown = async () => {
+const gracefulShutdown = () => {
     log.error(APP_NAME, "Received kill signal, shutting down gracefully...");
-    httpServer.close(() => {});
-    
-    try {
-        // Use a timeout for Redis disconnect
-        await Promise.race([
-            redisClient.disconnect(), // disconnect() is more forceful than quit()
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 1000))
-        ]);
-    } catch (e) {
-        log.error(APP_NAME, "Redis forced disconnect.");
-    }
+    server.close(() => {
+        log.error(APP_NAME, "HTTP server closed.");
+        redisClient.quit().then(() => {
+            log.error(APP_NAME, "Redis disconnected.");
+            process.exit(0);
+        });
+    });
 
-    process.exit(0);
-    
+    // Force close after 2 seconds if graceful fails
+    setTimeout(() => {
+        log.error(APP_NAME, "Could not close connections in time, forceful shutdown");
+        process.exit(1);
+    }, 2000);
 };
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+// Bootup
+const boot = async () => {
+
+    console.log(pc.cyan("------------------------------------------"));
+    console.log(pc.cyan(`[${APP_NAME}] Booting in ${process.env.NODE_ENV} mode...`));
+    console.log(pc.cyan("------------------------------------------"));
+
+    await initClients();
+    initSocketHub();
+
+    server.listen(process.env.APP_PORT, async () => {
+
+        zorm.connect().then(async () => {
+            const vapidKeys = webpush.generateVAPIDKeys();
+            const _cog = await Cog([`vapid_pk`, `vapid_sk`], [vapidKeys.publicKey, vapidKeys.privateKey])
+            VAPID.pk = _cog!.vapid_pk as string;
+            VAPID.sk = _cog!.vapid_sk as string; 
+
+            log.info(APP_NAME, `🚀 Server ready on port ${process.env.APP_PORT}`)
+        })
+        .catch((err: any) => {
+            console.error(`[ZormConnectionFailed]`, err)
+        })
+
+    })
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+
+};
+
+boot();

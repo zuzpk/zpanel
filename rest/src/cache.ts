@@ -1,5 +1,5 @@
-import { ZuzApp, NginxServerBlock, ICacheSection, NginxServer } from "@/lib/types";
-import { PubSub } from "@zuzjs/core"
+import { ICacheSection, NginxServer, NginxServerBlock, ZuzApp } from "@/lib/types";
+import { PubSub } from "@zuzjs/core";
 
 export const pubsub = new PubSub()
 
