@@ -76,22 +76,11 @@
 .zg00cidw { gap: 15px; }
 .zg009heu { gap: 8px; }
 .zf00kcc7 { font-size: 20px; }
-.zw0026ho { width: 60px; }
-.zb001xdt { background: var(--dim-light); }
-.zg00bajn { gap: 5px; }
-.zp005mib { padding: 15px; }
-.zp0015da { padding: 10px; }
-.zf00m45q { font-size: 9px; }
-.zt00kcz0 { text-align: center; }
-.zw00iu8t { width: 25px; }
-.zh004c9f { height: 40px; }
-.zb0098c1:hover { background: var(--dim-hover); }
-.zo00aubg:hover { opacity: 1; }
-.zb005w8d { background: var(--dim-hover); }
-.zo00k3su { opacity: 0.9; }
 .zw005hdw { width: 90vw; }
+.zg00bajn { gap: 5px; }
 .zm004neb { max-width: 50vw; }
 .zp00bfua { padding: 50px; }
+.zb001xdt { background: var(--dim-light); }
 .zm009out { margin-top: 10px; }
 .zw00512k { width: 160px !important; }
 .zm00c9h2 { margin-top: 20px; }
@@ -103,11 +92,13 @@
 .zb00hsli { background: 000px; }
 .zh0065z4 { height: 100px; }
 .zg00jdya { gap: 4px; }
+.zp0015da { padding: 10px; }
 .za00hsvf { aspect-ratio: 1; }
 .zb001cuf { border-radius: var(--app-item-radius); }
 .zc00av3h { cursor: pointer; }
 .zt00licf { transition: all 0.2s ease-in-out 0s; }
 .zb0001b0 { background: var(--dim); }
+.zb005w8d { background: var(--dim-hover); }
 .zb008fg2:hover { box-shadow: 0px 0px 0px 5px var(--dim-hover); }
 .zh007pst { height: 100%; }
 .zb004xqp { border-radius: 80px; }
@@ -161,7 +152,6 @@
 .zp00ezyp { padding: 14px !important; }
 .zb006zpb:hover { background: var(--dim) !important; }
 .zh008xkq { height: 100dvh; }
-.zo007yoe { overflow: hidden; }
 .zb00d5a8:hover { background: var(--dim); }
 .za00f5ij { aspect-ratio: 1/1; }
 .zb00kvqv { background: var(--gray-500); }
@@ -170,12 +160,14 @@
 .zp000q3a { padding: 5vw 20vw; }
 .zg004q5j { grid-template-columns: repeat(5,1fr); }
 .zg007d69 { grid-template-rows: repeat(5,1fr); }
+.zo007yoe { overflow: hidden; }
 .zc006gbo { color: var(--primary) !important; }
 .zw00ho00 { width: 50vw; }
 .zg00d6hd { gap: 30px; }
 .zm004ri3 { max-width: 200px; }
 .zm009rga { max-width: 100px; }
 .zb00fsaj { background: var(--btn-tab-hover); }
+.zh004c9f { height: 40px; }
 .zp00c02u { padding-left:10px;padding-right:10px; }
 .zb00bk0u { border-bottom: 1px var(--btn-tab) solid; }
 .zo00jlb4 { overflow-x: auto; }
@@ -186,9 +178,17 @@
 .zb00jb1m { background: var(--btn-tab); }
 .zf009obb { font-size: 11px; }
 .zh004o6t { height: calc(100vh - 60px); }
+.zb0006dw { border: 1px var(--background) solid; }
+.zb00jad9 { border-radius: var(--radius-lg); }
+.zw00jsaj { width: calc(100vw - 330px); }
+.zg00lptv { grid-gap: 20px; }
+.zg007m4l { grid-template-columns: repeat(3, 1fr); }
+.zf001n0z { font-size: var(--text-sm); }
+.zf00etom { font-size: var(--text-lg); }
+.zt00e8sr { top: 20px; }
+.zr005tkn { right: 30px; }
 .zw00k8m9 { width: 60vw; }
 .zf00lcdz { font-size: var(--text-xl); }
-.zf00etom { font-size: var(--text-lg); }
 .zf00m8uz { font-size: 15px; }
 .zm00e5zu { margin-top: 15px; }
 .zc00ljq6 { color: var(--red-500); }
@@ -196,23 +196,11 @@
 .zm00807k { min-height: 0px; }
 .zw007f8e { width: calc(100vw - 270px); }
 .zb00l7uv { border-radius: 30px 0px 0px 30px; }
-.zw00jsaj { width: calc(100vw - 330px); }
 .zp0063ik { padding: 0px 25px; }
-.zf007gro { font-size: var(--text-md); }
-.zf001n0z { font-size: var(--text-sm); }
-.zm0028u8 { max-width: 700px; }
-.zp008ffg { padding: 20px 50px; }
-.zm00hepk { margin-top: 40px; }
 .zw009s18 { width: 600px; }
 .zm0078sf { max-width: 600px; }
 .zp004n4r { padding: 0px 20px 20px 20px; }
 .zm002nh7 { margin-top: 70px; }
-.zb0006dw { border: 1px var(--background) solid; }
-.zb00jad9 { border-radius: var(--radius-lg); }
-.zg00lptv { grid-gap: 20px; }
-.zg007m4l { grid-template-columns: repeat(3, 1fr); }
-.zt00e8sr { top: 20px; }
-.zr005tkn { right: 30px; }
 .zm000aqq { max-width: 270px; }
 .zp00874k { padding: 25px; }
 .zp00aifa { padding-left: 10px; }
@@ -220,3 +208,15 @@
 .zb00bz4b { border-radius: 20px; }
 .zp004xkc { padding: 6px 10px; }
 .zb006v9h:hover { background: var(--dim-light); }
+.zo00aubg:hover { opacity: 1; }
+.zo00k3su { opacity: 0.9; }
+.zf007gro { font-size: var(--text-md); }
+.zm0028u8 { max-width: 700px; }
+.zp008ffg { padding: 20px 50px; }
+.zm00hepk { margin-top: 40px; }
+.zw0026ho { width: 60px; }
+.zp005mib { padding: 15px; }
+.zf00m45q { font-size: 9px; }
+.zt00kcz0 { text-align: center; }
+.zw00iu8t { width: 25px; }
+.zb0098c1:hover { background: var(--dim-hover); }

@@ -1,4 +1,9 @@
 import { AppList, ChangeAppMode, CreateApp, Dashboard, DeployGitBranch, ListGitBranches, PushGitBranch, UpdateAppSettings } from "@/app/apps";
+import {
+    CreateEmptyFile,
+    CreateFolder,
+    ListFilesAndFolders
+} from "@/app/fm";
 import { listLinuxGroups, listLinuxUsers, SaveWebPushToken, Signin, Signout } from "@/app/user";
 import { dynamic } from "@zuzjs/core";
 import { Request, Response } from "express";
@@ -61,8 +66,14 @@ const Routes : dynamic = {
 
             }
 
-        }
-
+        },
+        Fm: {
+            private: {
+                Ls: ListFilesAndFolders,
+                NewFile: CreateEmptyFile,
+                NewFolder: CreateFolder,
+            }
+        },
 
     }
 }

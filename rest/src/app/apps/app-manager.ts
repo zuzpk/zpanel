@@ -5,7 +5,7 @@ import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from '@/lib';
 import { LOG_SYMBOLS } from '@/lib/logger';
 import { AppSwitchMode, ZuzApp } from '@/lib/types';
 import { _, dynamic, uuid } from '@zuzjs/core';
-import { WorkerMode, WorkerStats, WorkerStatus, zpm } from "@zuzjs/pm";
+import { WorkerConfig, WorkerMode, WorkerStats, WorkerStatus, zpm } from "@zuzjs/pm";
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -186,6 +186,39 @@ class AppManager {
 
     }
 
+    public async getZPMConfig(config: ZuzApp) : Promise<WorkerConfig> {
+
+        const pkgJsonPath = path.join(config.path, `package.json`)
+        const pkgJson : dynamic = JSON.parse(await fs.readFile(pkgJsonPath, `utf8`))
+
+        if ( 
+            pkgJson.scripts.start.includes(`next`) || 
+            pkgJson.dependencies.next
+        )
+        {
+            // NextJS App
+            return {
+                name: config.worker,
+                scriptPath: ``
+            }
+        }
+        else{
+            return {
+                name: config.worker,
+                scriptPath: path.join(config.path, `dist`, `zapp.js`),
+                port: config.port,
+                instances: 1,
+                mode: WorkerMode.Fork,
+                user: `zpanel`
+                // logs: {
+                //     wsUrl: ``,
+                //     saveToFile: true
+                // }
+            }
+            // log.info(APP_NAME, startMsg)
+        }
+    }
+
     public async createApp(conf?: Partial<ZuzApp>): Promise<ZuzApp | null> {
         try{
 
@@ -326,9 +359,11 @@ class AppManager {
         }
         try {
 
+            await zpm.ensureDaemon()
+            
             switch(mode){
                 case "start":
-                    log.info(APP_NAME, `[Starting]`, await zpm.restart(app.worker))
+                    log.info(APP_NAME, `[Starting]`, await zpm.start(await this.getZPMConfig(app)))
                     break;
                 case "stop":
                     log.info(APP_NAME, `[Stoping]`, await zpm.stop(app.worker))
@@ -560,9 +595,6 @@ class AppManager {
                 );
             }
 
-            // Fix permissions immediately after git operations so pnpm can work
-            execSyncSudo(`chown -R zpanel:zpanel "${appDir}"`);
-
             const appPort = await this.guessAppPort(config.id!, appDir)
             this.broadcast(config.id, `⚡ Detected port ${pc.cyan(appPort)}`, onData);
 
@@ -588,34 +620,40 @@ class AppManager {
                 `sudo pnpm --dir "${appDir}" run build`, 
                 onData);
 
+            // Fix permissions immediately after git operations so pnpm can work
+            execSyncSudo(`chown -R zpanel:zpanel "${appDir}"`);
+
             // 4. Systemd Sync
             this.broadcast(config.id, "#5 Synchronizing Workers...", onData);
+            
+            await zpm.ensureDaemon()
+            const startMsg = await zpm.start(await this.getZPMConfig(config))
+            log.info(APP_NAME, startMsg)
 
-            const pkgJsonPath = path.join(config.path, `package.json`)
-            const pkgJson : dynamic = JSON.parse(await fs.readFile(pkgJsonPath, `utf8`))
+            // const pkgJsonPath = path.join(config.path, `package.json`)
+            // const pkgJson : dynamic = JSON.parse(await fs.readFile(pkgJsonPath, `utf8`))
 
-            if ( 
-                pkgJson.scripts.start.includes(`next`) || 
-                pkgJson.dependencies.next
-            )
-            {
-                // NextJS App
-            }
-            else{
-                await zpm.ensureDaemon()
-                const startMsg = await zpm.start({
-                    name: config.worker,
-                    scriptPath: path.join(config.path, `dist`, `zapp.js`),
-                    port: config.port,
-                    instances: 1,
-                    mode: WorkerMode.Fork,
-                    // logs: {
-                    //     wsUrl: ``,
-                    //     saveToFile: true
-                    // }
-                })
-                log.info(APP_NAME, startMsg)
-            }
+            // if ( 
+            //     pkgJson.scripts.start.includes(`next`) || 
+            //     pkgJson.dependencies.next
+            // )
+            // {
+            //     // NextJS App
+            // }
+            // else{
+            //     await zpm.ensureDaemon()
+            //     const startMsg = await zpm.start({
+            //         name: config.worker,
+            //         scriptPath: path.join(config.path, `dist`, `zapp.js`),
+            //         port: config.port,
+            //         instances: 1,
+            //         mode: WorkerMode.Fork,
+            //         // logs: {
+            //         //     wsUrl: ``,
+            //         //     saveToFile: true
+            //         // }
+            //     })
+            // }
             // fss.writeFileSync
             // execSyncSudo(`bash -c 'echo "${JSON.stringify(pkgJson)}" > "${pkgJsonPath}"'`);
 

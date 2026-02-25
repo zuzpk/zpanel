@@ -1,13 +1,12 @@
 "use client"
+import { APP_NAME, APP_VERSION } from "@/config";
+import { AppStore, Store } from '@/store';
+import { useStore } from '@zuzjs/store';
 import { Box, ColorScheme, css, Icon, Image, Position, Text, ToolTip } from '@zuzjs/ui';
 import Link from 'next/link';
-import React, { useMemo } from 'react';
-import { APP_NAME, APP_VERSION } from "@/config"
-import { useStore } from '@zuzjs/store';
-import { AppStore, Store } from '@/store';
-import Modules from './hub/modules';
-import { Module } from './hub/modules';
 import { usePathname } from 'next/navigation';
+import React from 'react';
+import Modules, { Module } from './hub/modules';
 
 const Sidebar : React.FC = (_props) => {
 
@@ -18,7 +17,7 @@ const Sidebar : React.FC = (_props) => {
        <Box as={`flex:1 flex cols gap:5`}>
             <Box as={`logo flex aic p:15 mb:25`}>
                 <Link href={`/` as any} className={css(`tdn`)}>
-                    <ToolTip title={APP_NAME}>
+                    <ToolTip title={APP_NAME} position={Position.Right}>
                         <Image src="/imgs/zuz-logo.png" alt={APP_NAME} as={`w:25`} />
                     </ToolTip>
                 </Link>
@@ -30,7 +29,7 @@ const Sidebar : React.FC = (_props) => {
                     link: `/hub`,
                 },
                 ...Modules
-            ].map((item: Module, index: number) => <ToolTip title={item.name} position={Position.Right}>
+            ].map((item: Module, index: number) => <ToolTip title={item.name} position={Position.Right} margin={6}>
                 <Link 
                     href={item.link} 
                     key={`sidebar-${index}-${item.name}-${item.link}`}

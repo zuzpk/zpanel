@@ -141,7 +141,12 @@ const Sidebar : React.FC = (_props) => {
             </Box> 
 
             <Box as={`flex aic gap:5 mb:20 pl:10`}>
-                {!loading && currentApp && currentApp?.status == ZuzAppStatus.Stopped ? (
+                {   !loading && currentApp && 
+                    (
+                        currentApp?.status == ZuzAppStatus.Stopped ||
+                        currentApp?.status == ZuzAppStatus.Unknown
+                    )
+                    ? (
                     <Button as={`bold`} variant={Variant.XSmall} onClick={() => act(`start`)}  icon={`play`}>Start</Button>
                 ) : (
                     <>

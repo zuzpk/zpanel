@@ -1,11 +1,10 @@
 "use client"
+import { pubsub } from "@/cache";
+import { AppStore, Store } from "@/store";
+import { PubEvent } from "@/types";
+import { useStore } from "@zuzjs/store";
 import { Box, Button, Crumb, Text, Variant } from "@zuzjs/ui";
 import FileManager from "../filemanager";
-import PageTitle from "../page-title";
-import { useStore } from "@zuzjs/store";
-import { AppStore, Store } from "@/store";
-import { pubsub } from "@/cache";
-import { PubEvent } from "@/types";
 import FileManagerContext from "./context";
 
 const Page: React.FC = () => {
@@ -17,7 +16,7 @@ const Page: React.FC = () => {
     } = useStore<typeof AppStore.FileManager>(Store.FileManager);
 
     return (
-        <Box as={`w:calc[100vw - 60px] h:100dvh no-overflow flex cols p:$page-padding`}>
+        <Box as={`w:calc[100vw - 60px] h:100dvh overflow-y flex cols p:$page-padding`}>
             <Box as={`flex aic rel`}>
                 <Box as={`flex flex:1 cols`}>
                     <Text as={`s:18 bold mb:6 pl:6`}>Files</Text>
