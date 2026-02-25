@@ -2,10 +2,11 @@ import { pubsub } from "@/cache";
 import { APP_NAME } from "@/config";
 import { fromHash, headers, log } from "@/lib";
 import { redisClient, redisSub, wss } from "@/lib/clients";
-import { LOG_SYMBOLS } from "@/lib/logger";
+import { LOG_SYMBOLS, LogEntry, logHistory } from "@/lib/logger";
 import { Events } from "@/lib/types";
 import { dynamic } from "@zuzjs/core";
 import { IncomingMessage } from "node:http";
+import pc from "picocolors";
 import { WebSocket } from "ws";
 
 let isInitialized = false;
@@ -20,14 +21,26 @@ export const handleSocketMessage = (req:IncomingMessage, ms, ws, origin) => {
         }
     }
 
-    // pubsub.on(Events.TLog, (entry: LogEntry) => respond("tlog", { msg: `[${pc.cyan(entry.appId)}] ${entry.message}` }))    
+    pubsub.on(Events.TLog, (entry: LogEntry) => respond("tlog", { msg: `[${pc.cyan(entry.appId)}] ${entry.message}` }))    
 
     if ( `a` in raw ){
 
         switch(raw.a){
             case "ping":
                 respond("pong", {})
-                break;            
+                break; 
+            case "tlog":
+                // const history = logHistory.filter((l: LogEntry) => l.appId === raw.m);
+                // (
+                //     raw.m != `-` ?
+                //         history.length > 0 ? history : noLogEntry(raw.m)
+                //         : logHistory.length > 0 ? logHistory
+                //             : noLogEntry(`-`)
+                // )
+                logHistory.forEach((log: LogEntry) => {
+                    respond("tlog", { appId: raw.m, msg: `[${pc.cyan(log.appId)}] ${log.message}` })
+                })
+                break;           
         }
     }
 }

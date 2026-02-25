@@ -5,7 +5,7 @@ import { _ } from "@zuzjs/core";
 import { WorkerStatus } from "@zuzjs/pm";
 import { Request, Response } from "express";
 import apm from "./app-manager";
-import github from "./git-manager";
+import github, { GitHubBranch } from "./git-manager";
 
 export const AppList = async (req: Request, resp: Response) => {
 
@@ -181,5 +181,84 @@ export const ListGitBranches = async (req: Request, resp: Response) => {
         message: `Commits are not loaded with error: ${e.message}`
       })
     }
+
+}
+
+export const DeployGitBranch = async (req: Request, resp: Response) => {
+
+  const { appId, branch } = req.body
+
+  const app = cache.apps.getById(appId)
+
+  if ( !app ){
+    return resp.send({
+      error: `appNotFound`,
+      message: `App not found or you don't have permission to access it.`
+    })
+  }
+
+  const b = branch as GitHubBranch
+
+  return apm.deployBranch(
+    app, 
+    b.name, 
+    str => log.info(appId, str)
+  )
+  .then(() => {
+    log.info(APP_NAME, `Branch deployed successfully`, { appId, branch: b.name })
+    return resp.send({
+        kind: `branchDeployed`,
+        message: `Target branch deployed`
+      })
+    })
+    .catch(() => {
+      log.error(APP_NAME, `DeployBranchError`, { appId, branch: b.name })
+      return resp.send({
+          error: `branchDeployFailed`,
+          message: `Failed to deploy target branch`
+        })
+  })
+
+}
+
+
+export const PushGitBranch = async (req: Request, resp: Response) => {
+
+  const { 
+    appId, 
+    //Commit message
+    cmsg = ``,
+    branch = `main`
+  } = req.body
+
+  const app = cache.apps.getById(appId)
+
+  if ( !app ){
+    return resp.send({
+      error: `appNotFound`,
+      message: `App not found or you don't have permission to access it.`
+    })
+  }
+
+  return apm.pushToBranch(
+    app, 
+    branch,
+    cmsg, 
+    str => log.info(appId, str)
+  )
+  .then(() => {
+    log.info(APP_NAME, `Pushed to ${branch} successfully`)
+    return resp.send({
+        kind: `branchPushed`,
+        message: `Pushed to ${branch} successfully`
+      })
+    })
+    .catch(() => {
+      log.error(APP_NAME, `PushBranchError`)
+      return resp.send({
+          error: `branchPushFailed`,
+          message: `Failed pushing to target branch`
+        })
+  })
 
 }

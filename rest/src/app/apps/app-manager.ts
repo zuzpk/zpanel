@@ -2,8 +2,9 @@ import { createSystemUser } from '@/app/user';
 import cache from '@/cache';
 import { APP_NAME } from '@/config';
 import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from '@/lib';
+import { LOG_SYMBOLS } from '@/lib/logger';
 import { ZuzApp } from '@/lib/types';
-import { dynamic, uuid } from '@zuzjs/core';
+import { _, dynamic, uuid } from '@zuzjs/core';
 import { WorkerMode, WorkerStatus, zpm } from "@zuzjs/pm";
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
@@ -335,6 +336,87 @@ class AppManager {
         }
     }
 
+
+    /**
+     * This updates the config and performs a full rebuild.
+     * Handles first-time setup AND branch updates.
+     */
+    public async pushToBranch(
+        config: ZuzApp, 
+        branch: string, 
+        commitMsg: string,
+        onData: (chunk: string) => void
+    ) {
+        
+        const appDir = config.path
+
+        if ( 
+            !sudoDirExists(appDir)
+        ){
+            this.broadcast(config.id, `${config.path} Not Exist.`, onData);
+            return;
+        }
+
+        const init = git.initGitSafely(config.path)
+
+        if ( init == `new` ){
+            execSyncSudo(git.cmd(`branch -M ${branch}`, config.path))
+            execSyncSudo(git.cmd(`remote add origin ${config.git?.url}`, config.path))
+        }
+        else{
+            execSyncSudo(git.cmd(`checkout -b ${branch} || true`, config.path)); 
+        }
+        
+        const pem = await this.getPemKey(config.id)
+        let accessToken : string | null = null;
+
+        if ( config.git?.isPrivate ){
+            if ( !pem ){
+                return this.broadcast(config.id, `❌ Deployment failed: PEM key required for private repo.`, onData, "error");
+            }
+            accessToken = await git.getAccessToken(
+                config.git.appId!, 
+                config.git.installationId!, 
+                pem
+            )
+
+            if ( !accessToken ){
+                return this.broadcast(config.id, `❌ Deployment failed: Could not retrieve access token for GitHub App.`, onData, "error");
+            }
+
+        }
+
+        const gitUrl = config.git?.isPrivate ? 
+            this.gitBuildPrivateUrl(accessToken, config.git!.url)
+            : config.git?.url;
+        
+        await runStreamedCommand(
+            config.id,
+            [
+                `sudo git config --global --add safe.directory "${appDir}"`,
+                git.cmd(`remote set-url origin "${gitUrl}"`, appDir),
+            ].join(` && `),
+            onData
+        );
+
+        const commit = await git.safeCommit(config.path, _(commitMsg).isEmpty() ? undefined : commitMsg, true)
+
+        if ( commit.status === false ){
+            this.broadcast(config.id, commit.message, onData);
+            return;
+        }
+
+        await runStreamedCommand(
+            config.id,
+            git.cmd(`push -u origin ${branch}`, appDir),
+            onData
+        );
+
+        this.broadcast(config.id, `${LOG_SYMBOLS.success} Pushed successfully to ${branch}`, onData);
+
+    }
+
+
     /**
      * This updates the config and performs a full rebuild.
      * Handles first-time setup AND branch updates.
@@ -357,7 +439,6 @@ class AppManager {
         }
 
         log.info(config.id, `Initializing Deployment`, pc.green(branch));
-
 
         const pem = await this.getPemKey(config.id)
         let accessToken : string | null = null;

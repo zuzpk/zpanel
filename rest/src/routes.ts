@@ -1,11 +1,12 @@
-import { AppList, CreateApp, ListGitBranches, UpdateAppSettings } from "@/app/apps";
+import { AppList, CreateApp, DeployGitBranch, ListGitBranches, PushGitBranch, UpdateAppSettings } from "@/app/apps";
 import { listLinuxGroups, listLinuxUsers, SaveWebPushToken, Signin, Signout } from "@/app/user";
 import { dynamic } from "@zuzjs/core";
 import { Request, Response } from "express";
 
 const Routes : dynamic = {
     WebSocket: {
-        private: ['/wss'],
+        internal: ['/wss/zpm'],
+        private: ['/wss', '/wss/terminal'],
         public: []
     },
     Get: {
@@ -44,8 +45,8 @@ const Routes : dynamic = {
             private: {
                 // Commits: ListGitCommits,
                 Branches: ListGitBranches,
-                // Deploy: DeployGitBranch,
-                // Push: PushGitBranch,
+                Deploy: DeployGitBranch,
+                Push: PushGitBranch,
             }
         },
         Apps: {
