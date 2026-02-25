@@ -1,4 +1,4 @@
-import { AppList, CreateApp, Dashboard, DeployGitBranch, ListGitBranches, PushGitBranch, UpdateAppSettings } from "@/app/apps";
+import { AppList, ChangeAppMode, CreateApp, Dashboard, DeployGitBranch, ListGitBranches, PushGitBranch, UpdateAppSettings } from "@/app/apps";
 import { listLinuxGroups, listLinuxUsers, SaveWebPushToken, Signin, Signout } from "@/app/user";
 import { dynamic } from "@zuzjs/core";
 import { Request, Response } from "express";
@@ -57,6 +57,7 @@ const Routes : dynamic = {
                 Create: CreateApp,
                 UpdateAppSettings,
                 Dashboard,
+                Switch: ChangeAppMode
 
             }
 

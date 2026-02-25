@@ -3,7 +3,7 @@ import cache from '@/cache';
 import { APP_NAME } from '@/config';
 import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from '@/lib';
 import { LOG_SYMBOLS } from '@/lib/logger';
-import { ZuzApp } from '@/lib/types';
+import { AppSwitchMode, ZuzApp } from '@/lib/types';
 import { _, dynamic, uuid } from '@zuzjs/core';
 import { WorkerMode, WorkerStats, WorkerStatus, zpm } from "@zuzjs/pm";
 import { execSync } from 'child_process';
@@ -309,6 +309,43 @@ class AppManager {
 
         return null
 
+    }
+
+
+    /**
+     * Updates the status of an app.
+     * @param appId The ID of the app to update.
+     * @param mode The new mode to set for the app.
+     * @returns True if the update was successful, false otherwise.
+     */
+    public async UpdateAppStatus(appId: string, mode: AppSwitchMode) {
+        const app = cache.apps.getById(appId);
+        if (!app) {
+            log.error(APP_NAME, `UpdateAppStatus failed: App with ID ${appId} not found in cache.`);
+            return false;
+        }
+        try {
+
+            switch(mode){
+                case "start":
+                    log.info(APP_NAME, `[Starting]`, await zpm.restart(app.worker))
+                    break;
+                case "stop":
+                    log.info(APP_NAME, `[Stoping]`, await zpm.stop(app.worker))
+                    break;
+                case "restart":
+                    log.info(APP_NAME, `[Restarting]`, await zpm.restart(app.worker))
+                    break;
+            }
+            
+            app.status = mode === 'start' || mode === `restart` ? WorkerStatus.Running : WorkerStatus.Stopped;
+            cache.apps.update(app);
+
+            return true;
+        } catch (err) {
+            log.error(APP_NAME, `Failed to ${mode} app ${app.name} (${app.worker}) (${app.id}):`, err);
+            return false;
+        }
     }
 
 

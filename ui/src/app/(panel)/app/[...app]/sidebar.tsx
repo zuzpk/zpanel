@@ -97,22 +97,27 @@ const Sidebar : React.FC = (_props) => {
     })
 
     const act = (action: AppSwitchMode) => {
-        dialog.show({
+        const dh = dialog.show({
             title: `${action.charAt(0).toUpperCase() + action.slice(1)} App`,
             message: `Are you sure you want to ${action} this app?`,
             action: [
                 {
                     label: `Yes, ${action.charAt(0).toUpperCase() + action.slice(1)}`,
-                    onClick: () => switchAppMode(id, action)
+                    onClick: () => {
+                        dh.setLoading(true)
+                        switchAppMode(id, action)
                         .then(() => {
                             toast.success(`App ${action}ed successfully!`)
+                            dh.hide()
                             dispatch({ 
                                 list: list.map(l => l.id == id ? 
                                     { ...l, status: action == `start` || action == `restart` ? ZuzAppStatus.Running : ZuzAppStatus.Stopped } : l) })
                         })
                         .catch(err => {
+                            dh.setLoading(false)
                             toast.error(`Failed to ${action} app: ${err.message}`)
                         })
+                    }
                 }
             ]
         })
