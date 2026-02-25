@@ -218,5 +218,15 @@ export const zuzMap: Record<string, string> = {
   "s:sm": "zf001n0z",
   "maxW:700": "zm0028u8",
   "p:20,50": "zp008ffg",
-  "mt:40": "zm00hepk"
+  "mt:40": "zm00hepk",
+  "p:$padding-md": "zp00fzgu",
+  "r:$radius-lg": "zb00jad9",
+  "grid-cols:repeat[2, 1fr]": "zg00c8lg",
+  "grid-cols:repeat[3, 1fr]": "zg007m4l",
+  "bg:$background": "zb00fxmq",
+  "gridGap:20": "zg00lptv",
+  "border:1,$background,solid": "zb0006dw",
+  "top:20": "zt00e8sr",
+  "right:20": "zr0038ye",
+  "right:30": "zr005tkn"
 };

@@ -1,5 +1,5 @@
 import { APP_VERSION, LOADING_MSG } from "./config";
-import { FileItem, GitHubBranch, GitHubCommit, LinuxUser, VirtualHost, ZuzApp } from "./types";
+import { FileItem, GitHubBranch, GitHubCommit, LinuxUser, VirtualHost, WorkerStats, ZuzApp } from "./types";
 
 export enum Store {
     App = "app",
@@ -30,6 +30,10 @@ export const AppStore = {
         error: null,
         users: [] as LinuxUser[],
         list: [] as ZuzApp[],
+        dashboard: {
+            loading: false,
+            stats: null as WorkerStats | null
+        }        
     },
     Git: {
         loading: true,

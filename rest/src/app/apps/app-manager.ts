@@ -5,7 +5,7 @@ import { execSyncSudo, log, runStreamedCommand, sudoDirExists } from '@/lib';
 import { LOG_SYMBOLS } from '@/lib/logger';
 import { ZuzApp } from '@/lib/types';
 import { _, dynamic, uuid } from '@zuzjs/core';
-import { WorkerMode, WorkerStatus, zpm } from "@zuzjs/pm";
+import { WorkerMode, WorkerStats, WorkerStatus, zpm } from "@zuzjs/pm";
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -289,6 +289,30 @@ class AppManager {
         }
     }
 
+    public async appDashboard(id: string) : Promise<WorkerStats | null> {
+
+        log.info(APP_NAME, `[FetchingDashboard] # ${id}`);
+
+        const app = cache.apps.getById(id)
+    
+        if ( !app ){
+            log.info(APP_NAME, `[AppDashboard] App not in cache...`);
+            console.log(cache.apps.getAll())
+        }
+
+
+        const stats = await zpm.stats(app?.worker)
+
+        if (stats.length > 0){
+            return stats[0]!
+        }
+
+        return null
+
+    }
+
+
+    /** Git */
     
     private async createSafetySnapshot(appId: string, appDir: string, onData: (d: string) => void): Promise<string> {
 

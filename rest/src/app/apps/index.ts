@@ -122,6 +122,39 @@ export const UpdateAppSettings = async (req: Request, resp: Response) => {
 
 }
 
+export const Dashboard = async (req: Request, resp: Response) => {
+  
+  apm
+    .appDashboard(req.body.appId)
+    .then(st => {
+
+      if ( st ){
+        resp.send({
+          kind: `appDashboard`,
+          stats: st
+        })
+      }
+      else{
+        resp.send({
+          error: `appNotFound`,
+          message: `That app does not exist...`
+        })
+      }
+
+
+    })
+    .catch(err => {
+
+      resp.send({
+        error: `appNotFound`,
+        message: `That app does not exist...`
+      })
+
+    })
+}
+
+
+
 export const ListGitBranches = async (req: Request, resp: Response) => {
 
     const { appId } = req.body

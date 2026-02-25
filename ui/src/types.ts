@@ -61,30 +61,6 @@ export interface ZuzAppPackage {
     isNextJs: boolean
 }
 
-// export interface ZuzApp {
-//     id: string;
-//     name: string;
-//     service: string;
-//     pkg: ZuzAppPackage | null;
-//     domain: string;
-//     description?: string;
-//     git?: {
-//         url: string;
-//         isPrivate?: boolean;
-//         pem?: string;
-//         branch?: string;
-//         commit?: string;
-//         installationId?: string;
-//         appId?: string;
-//     },
-//     nodeVersion: string;
-//     port: number;
-//     user: string;
-//     group?: string;
-//     path: string;
-//     status: ZuzAppStatus;
-// }
-
 export interface ZuzApp {
     id: string;
     name: string;
@@ -104,6 +80,24 @@ export interface ZuzApp {
     port: number;
     path: string;
     status: ZuzAppStatus;
+}
+
+export enum WorkerMode {
+    Fork = "fork",// child_process.spawn – isolated scripts
+    Cluster = "cluster"
+}
+
+export interface WorkerStats {
+    name: string;
+    status: ZuzAppStatus;
+    pid: number | null;
+    uptime: number | null;
+    restartCount: number;
+    cpu: number | null;
+    memoryRss: number | null;
+    memoryHeap: number | null;
+    mode: WorkerMode;
+    instances: number;
 }
 
 export interface PageTitle {

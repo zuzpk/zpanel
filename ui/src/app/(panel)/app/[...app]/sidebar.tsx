@@ -49,7 +49,11 @@ const Sidebar : React.FC = (_props) => {
 
     const loadApps = useCallback(async () => {
         dispatch({
-            loading: true
+            loading: true,
+            dashboard: {
+                loading: false,
+                stats: null
+            }
         })
         withPost<{
             kind: string;
