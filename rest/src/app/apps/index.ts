@@ -280,6 +280,7 @@ export const PushGitBranch = async (req: Request, resp: Response) => {
 
   const { 
     appId, 
+    force,
     //Commit message
     cmsg = ``,
     branch = `main`
@@ -298,6 +299,7 @@ export const PushGitBranch = async (req: Request, resp: Response) => {
     app, 
     branch,
     cmsg, 
+    force,
     str => log.info(appId, str)
   )
   .then(() => {

@@ -1,7 +1,7 @@
 "use client"
 import { GitAction, GitHubBranch, ZuzApp } from '@/types';
 import { withPost } from '@zuzjs/core';
-import { Alert, Badge, Box, Button, Input, Span, Text, useToast } from '@zuzjs/ui';
+import { Alert, Badge, Box, Button, Input, Label, Span, Switch, Text, useToast } from '@zuzjs/ui';
 import React, { useRef } from 'react';
 import ZuzTerminal from '../../terminal';
 
@@ -35,9 +35,11 @@ const DeployBranch : React.FC<{
 
 
     const commitMsg = useRef<HTMLInputElement>(null)
+    const forcePush = useRef(false);
     const [ deploying, setDeploying ] = React.useState(false)
     const [ deployed, setDeployed ] = React.useState<DeployState>(DeployState.Idle)
     const [ message, setMessage ] = React.useState<string | null>(null)
+
 
     const sendBranchForDeploy = async () => {
 
@@ -46,6 +48,7 @@ const DeployBranch : React.FC<{
             kind: string;
             message: string;
         }>(`/_/git/${mode}`, {
+            force: forcePush.current == true ? 1 : 0,
             appId: app.id,
             branch: mode == `deploy` ? branch : branch?.name ?? `main`
         }, 60000)
@@ -93,9 +96,15 @@ const DeployBranch : React.FC<{
             </>}
 
             {mode == `push` && <>
-            <Text as={`s:15 mt:15`}>Commit Message</Text>
-            <Text as={`s:14 c:$gray-600`}>If empty, auto commit message (Timestamp <Span as={`bold`}>{new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}</Span>) will be generated</Text>
-            <Input ref={commitMsg} placeholder={`Message...`} />
+
+                <Label as={`flex aic gap:10 mv:25`}>
+                    <Switch onSwitch={check => forcePush.current = check} />
+                    <Text>Force Push</Text>
+                </Label>
+
+                <Text as={`s:15 mt:15`}>Commit Message</Text>
+                <Text as={`s:14 c:$gray-600`}>If empty, auto commit message (Timestamp <Span as={`bold`}>{new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}</Span>) will be generated</Text>
+                <Input ref={commitMsg} placeholder={`Message...`} />
             </>}
 
             <Box as={`flex aic gap:10 mt:30`}>

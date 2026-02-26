@@ -441,6 +441,7 @@ class AppManager {
         config: ZuzApp, 
         branch: string, 
         commitMsg: string,
+        force: number,
         onData: (chunk: string) => void
     ) {
         
@@ -504,7 +505,7 @@ class AppManager {
 
         await runStreamedCommand(
             config.id,
-            git.cmd(`push -u origin ${branch}`, appDir),
+            git.cmd(`push -u origin ${branch}${force == 1 ? ` --force` : ``}`, appDir),
             onData
         );
 
