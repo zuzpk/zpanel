@@ -18,6 +18,12 @@ SERVICE_NAME="zpanel-zpm"
 echo "=== ZuzPanel Auto-Updater ==="
 cd "$ZPANEL_ROOT"
 
+# 0. Ensure Git Identity (Required for automated merging)
+if ! git config user.name > /dev/null; then
+    git config user.name "ZuzPanel Auto-Updater"
+    git config user.email "support@zuz.com.pk"
+fi
+
 # 1. Fetch latest state
 git fetch origin main
 
@@ -73,9 +79,6 @@ sudo systemctl restart $SERVICE_NAME
 # -----------------------------------
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-
-    sudo npm i -g @zuzjs/pm@latest
-
     echo "✓ ZuzPanel is already up to date."
     exit 0
 fi
