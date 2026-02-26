@@ -16,7 +16,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@types/js-cookie": "3.0.6",
     "@zuzjs/core": "^0.3.4",
-    "@zuzjs/hooks": "^0.1.5",
+    "@zuzjs/hooks": "^0.1.11",
     "@zuzjs/store": "^0.1.6",
     "@zuzjs/ui": "^1.0.36",
     "js-cookie": "^3.0.5",

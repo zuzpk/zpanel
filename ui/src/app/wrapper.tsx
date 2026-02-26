@@ -1,11 +1,11 @@
 "use client"
-import { FB_PIXEL_ID, GA_MEASUREMENT_ID } from "@/config";
+import PushNotifications from "@/app/webpush";
+import { FB_PIXEL_ID, GA_MEASUREMENT_ID, LocalDB } from "@/config";
 import { AppStore, Store } from "@/store";
+import { DatabaseProvider, useFacebookPixel, useGoogleTagManager } from "@zuzjs/hooks";
 import createStore from "@zuzjs/store";
 import { Box, LayersProvider } from "@zuzjs/ui";
-import { useFacebookPixel, useGoogleTagManager } from "@zuzjs/hooks";
 import { ReactNode, useEffect } from "react";
-import PushNotifications from "@/app/webpush";
 
 const Wrapper = ({ children } : Readonly<{ children: ReactNode; }>) => {
 
@@ -26,7 +26,7 @@ const Main = ({ children } : { children: ReactNode }) => {
         sendFBPageView()
     }, []);
 
-    return <Provider>
+    return <DatabaseProvider options={LocalDB.You}><Provider>
             <UserProvider>
                 <LayersProvider>
                     <Box as={`app flex minH:100vh`}>
@@ -36,6 +36,7 @@ const Main = ({ children } : { children: ReactNode }) => {
                 </LayersProvider>
             </UserProvider>
         </Provider>
+    </DatabaseProvider>
 
 }
 
