@@ -153,7 +153,6 @@ export const Dashboard = async (req: Request, resp: Response) => {
     })
 }
 
-
 export const ChangeAppMode = async (req: Request, resp: Response) => {
   const { appId, mode } = req.body;
   log.info(APP_NAME, "ChangeAppMode called", { appId, mode });
