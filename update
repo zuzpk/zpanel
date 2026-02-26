@@ -83,6 +83,10 @@ fi
 echo "→ Update found! Saving local changes..."
 
 # 3. SAFE SYNC: Stash -> Reset -> Pop
+# This ensures git stash doesn't see them as problematic local changes
+rm -f "$REST_DIR/tsconfig.tsbuildinfo"
+rm -f "$REST_DIR/zpanel.pid"
+
 echo "→ Resetting CSS maps to match remote..."
 git checkout HEAD -- ui/src/app/css/zuz.scss
 git checkout HEAD -- ui/src/app/css/zuzmap.ts
