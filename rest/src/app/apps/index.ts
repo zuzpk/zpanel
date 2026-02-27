@@ -240,7 +240,7 @@ export const ListGitBranches = async (req: Request, resp: Response) => {
 
 export const DeployGitBranch = async (req: Request, resp: Response) => {
 
-  const { appId, branch } = req.body
+  const { appId, branch, start } = req.body
 
   const app = cache.apps.getById(appId)
 
@@ -256,6 +256,7 @@ export const DeployGitBranch = async (req: Request, resp: Response) => {
   return apm.deployBranch(
     app, 
     b.name, 
+    start,
     str => log.info(appId, str)
   )
   .then(() => {

@@ -521,6 +521,7 @@ class AppManager {
     public async deployBranch(
         config: ZuzApp, 
         branch: string, 
+        autoStart: number,
         onData: (chunk: string) => void
     ) {
 
@@ -612,7 +613,7 @@ class AppManager {
             this.broadcast(config.id, "#3 Installing dependencies with pnpm...", onData);
             await runStreamedCommand(
                 config.id, 
-                `sudo pnpm --dir "${appDir}" install`, 
+                `sudo pnpm --dir "${appDir}" install --force`, 
                 onData);
             
             this.broadcast(config.id, "#4 Running build script...", onData);
@@ -624,12 +625,18 @@ class AppManager {
             // Fix permissions immediately after git operations so pnpm can work
             execSyncSudo(`chown -R zpanel:zpanel "${appDir}"`);
 
-            // 4. Systemd Sync
-            this.broadcast(config.id, "#5 Synchronizing Workers...", onData);
-            
-            await zpm.ensureDaemon()
-            const startMsg = await zpm.start(await this.getZPMConfig(config))
-            log.info(APP_NAME, startMsg)
+            if ( autoStart == 1 ){
+                
+                // 4. Systemd Sync
+                this.broadcast(config.id, "#5 Synchronizing Workers...", onData);
+                
+                await zpm.ensureDaemon()
+                const workerConfig = await this.getZPMConfig(config)
+                try{ await zpm.stop(workerConfig.name) }catch(err){}
+                const startMsg = await zpm.start(workerConfig)
+                log.info(APP_NAME, startMsg)
+
+            }
 
             // const pkgJsonPath = path.join(config.path, `package.json`)
             // const pkgJson : dynamic = JSON.parse(await fs.readFile(pkgJsonPath, `utf8`))

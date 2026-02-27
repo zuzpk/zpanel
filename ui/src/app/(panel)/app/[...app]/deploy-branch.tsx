@@ -36,6 +36,7 @@ const DeployBranch : React.FC<{
 
     const commitMsg = useRef<HTMLInputElement>(null)
     const forcePush = useRef(false);
+    const autoStart = useRef(true);
     const [ deploying, setDeploying ] = React.useState(false)
     const [ deployed, setDeployed ] = React.useState<DeployState>(DeployState.Idle)
     const [ message, setMessage ] = React.useState<string | null>(null)
@@ -49,6 +50,7 @@ const DeployBranch : React.FC<{
             message: string;
         }>(`/_/git/${mode}`, {
             force: forcePush.current == true ? 1 : 0,
+            start: autoStart.current == true ? 1 : 0,
             appId: app.id,
             branch: mode == `deploy` ? branch : branch?.name ?? `main`
         }, 60000)
@@ -105,6 +107,14 @@ const DeployBranch : React.FC<{
                 <Text as={`s:15 mt:15`}>Commit Message</Text>
                 <Text as={`s:14 c:$gray-600`}>If empty, auto commit message (Timestamp <Span as={`bold`}>{new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}</Span>) will be generated</Text>
                 <Input ref={commitMsg} placeholder={`Message...`} />
+            </>}
+
+            {mode == `deploy` && <>
+
+                <Label as={`flex aic gap:10 mv:25`}>
+                    <Switch checked={autoStart.current}  onSwitch={check => autoStart.current = check} />
+                    <Text>Auto Start</Text>
+                </Label>
             </>}
 
             <Box as={`flex aic gap:10 mt:30`}>
