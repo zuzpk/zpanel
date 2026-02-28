@@ -496,12 +496,20 @@ class AppManager {
             onData
         );
 
+        const gitignorePath = path.join(config.path, '.gitignore');
+        if (!this.exists(gitignorePath)) {
+            execSyncSudo(`echo "node_modules/\ndist/\n.env\n*.tsbuildinfo" > ${gitignorePath}`);
+        }
+
         const commit = await git.safeCommit(config.path, _(commitMsg).isEmpty() ? undefined : commitMsg, true)
 
         if ( commit.status === false ){
             this.broadcast(config.id, commit.message, onData);
             return;
         }
+
+        this.broadcast(config.id, `Resetting HEAD (SOFT)`, onData);
+        execSyncSudo(git.cmd(`reset --soft HEAD`, appDir));
 
         await runStreamedCommand(
             config.id,
@@ -626,7 +634,7 @@ class AppManager {
             execSyncSudo(`chown -R zpanel:zpanel "${appDir}"`);
 
             if ( autoStart == 1 ){
-                
+
                 // 4. Systemd Sync
                 this.broadcast(config.id, "#5 Synchronizing Workers...", onData);
                 
