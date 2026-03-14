@@ -204,6 +204,7 @@ export const zuzMap: Record<string, string> = {
   "s:15": "zf00m8uz",
   "mt:15": "zm00e5zu",
   "c:$red-500": "zc00ljq6",
+  "mv:25": "zm00idnj",
   "c:$gray-600": "zc00m3ef",
   "w:calc[100vw - 60]": "zw00luq3",
   "minH:0": "zm00807k",
@@ -225,6 +226,5 @@ export const zuzMap: Record<string, string> = {
   "s:md": "zf007gro",
   "maxW:700": "zm0028u8",
   "p:20,50": "zp008ffg",
-  "mt:40": "zm00hepk",
-  "mv:25": "zm00idnj"
+  "mt:40": "zm00hepk"
 };
